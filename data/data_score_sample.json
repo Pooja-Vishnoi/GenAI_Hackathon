@@ -1,0 +1,66 @@
+{
+  "parameters_extracted": {
+    "company_name": "FinTechX",
+    "sector": "Finance",
+    "founded": "2022",
+    "team": "3 founders from IIT Delhi + 10 engineers",
+    "market": "Indian SME lending market $50B",
+    "traction": "10,000 users, 20% MoM growth",
+    "revenue": "INR 2 Cr ARR",
+    "unique_selling_point": "AI-driven underwriting with 30% lower default rate",
+    "competition": "KreditBee, LendingKart",
+    "risks": "Regulatory hurdles, funding dependency"
+  },
+  "parameters_normalized": {
+    "Team_Quality": 8,
+    "Market_Size": 10,
+    "Traction": 6,
+    "Financials": 1,
+    "Product_Uniqueness": 8,
+    "Competitive_Landscape": 7,
+    "Business_Model_Clarity": 7,
+    "Risk_Factors": 4
+  },
+  "weightages": {
+    "Team_Quality": 0.15,
+    "Market_Size": 0.15,
+    "Traction": 0.15,
+    "Financials": 0.1,
+    "Product_Uniqueness": 0.15,
+    "Competitive_Landscape": 0.1,
+    "Business_Model_Clarity": 0.1,
+    "Risk_Factors": 0.1
+  },
+  "thresholds": {
+    "Team_Quality": 3,
+    "Market_Size": 3,
+    "Traction": 3,
+    "Financials": 3,
+    "Product_Uniqueness": 3,
+    "Competitive_Landscape": 3,
+    "Business_Model_Clarity": 3,
+    "Risk_Factors": 3
+  },
+  "parameters_score": {
+    "Team_Quality": 1.2,
+    "Market_Size": 1.5,
+    "Traction": 0.9,
+    "Financials": 0.1,
+    "Product_Uniqueness": 1.2,
+    "Competitive_Landscape": 0.7,
+    "Business_Model_Clarity": 0.7,
+    "Risk_Factors": 0.4,
+    "Final_Score": 5.7
+  },
+  "weighted_score": 6.7,
+  "final_score": 5.7,
+  "penalties": [
+    {
+      "parameter": "Financials",
+      "deduction": 1.0
+    }
+  ],
+  "flags": [
+    "Financials below threshold (1.0 < 3)"
+  ]
+}
