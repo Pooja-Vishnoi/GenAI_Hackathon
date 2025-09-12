@@ -50,14 +50,9 @@ Visit `http://localhost:8501` to access the web interface.
 ### **High-Level System Overview**
 ```mermaid
 graph LR
-    A[📄 Documents] --> B[🔄 Processing Pipeline]
-    B --> C[🎯 Analysis Engine]
-    C --> D[📊 Interactive Dashboard]
-    
-    style A fill:#1976d2,color:#ffffff,stroke:#0d47a1,stroke-width:2px
-    style B fill:#7b1fa2,color:#ffffff,stroke:#4a148c,stroke-width:2px
-    style C fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style D fill:#388e3c,color:#ffffff,stroke:#1b5e20,stroke-width:2px
+    A[Documents] --> B[Processing Pipeline]
+    B --> C[Analysis Engine]
+    C --> D[Interactive Dashboard]
 ```
 
 ### **Detailed Architecture Layers**
@@ -65,75 +60,48 @@ graph LR
 #### **Layer 1: User Interface**
 ```mermaid
 graph TB
-    UI[🖥️ Streamlit Web App<br/>Main Interface]
-    UP[📤 File Upload<br/>PDF, DOCX, TXT]
-    DA[📊 Dashboard<br/>Results & Charts]
+    UI[Streamlit Web App]
+    UP[File Upload]
+    DA[Dashboard]
     
     UI --> UP
     UI --> DA
-    
-    style UI fill:#1976d2,color:#ffffff,stroke:#0d47a1,stroke-width:2px
-    style UP fill:#1976d2,color:#ffffff,stroke:#0d47a1,stroke-width:2px
-    style DA fill:#1976d2,color:#ffffff,stroke:#0d47a1,stroke-width:2px
 ```
 
 #### **Layer 2: Processing Pipeline**
 ```mermaid
 graph LR
-    INPUT[📂 Input Files] --> RF[📁 File Reader<br/>utils.py]
-    RF --> PE[🤖 Parameter Extractor<br/>pdf_file_reader.py]
-    PE --> SC[🎯 Scoring Engine<br/>structured_2_scored_data.py]
-    
-    style INPUT fill:#d32f2f,color:#ffffff,stroke:#b71c1c,stroke-width:2px
-    style RF fill:#7b1fa2,color:#ffffff,stroke:#4a148c,stroke-width:2px
-    style PE fill:#7b1fa2,color:#ffffff,stroke:#4a148c,stroke-width:2px
-    style SC fill:#7b1fa2,color:#ffffff,stroke:#4a148c,stroke-width:2px
+    INPUT[Input Files] --> RF[File Reader]
+    RF --> PE[Parameter Extractor]
+    PE --> SC[Scoring Engine]
 ```
 
 #### **Layer 3: Analysis Engine (8 Parameters)**
 ```mermaid
 graph TB
-    SC[🎯 Scoring Engine] --> PARAMS{Parameter Analysis}
+    SC[Scoring Engine] --> PARAMS{Parameter Analysis}
     
-    PARAMS --> TS[👥 Team Quality<br/>parse_team]
-    PARAMS --> MS[🌍 Market Size<br/>parse_market_size]
-    PARAMS --> TR[📈 Traction<br/>parse_traction]
-    PARAMS --> FS[💰 Financials]
-    PARAMS --> PS[🚀 Product<br/>Uniqueness]
-    PARAMS --> CS[⚔️ Competition<br/>Analysis]
-    PARAMS --> BS[📋 Business Model]
-    PARAMS --> RS[⚠️ Risk Factors]
-    
-    style SC fill:#7b1fa2,color:#ffffff,stroke:#4a148c,stroke-width:2px
-    style PARAMS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style TS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style MS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style TR fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style FS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style PS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style CS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style BS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style RS fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
+    PARAMS --> TS[Team Quality]
+    PARAMS --> MS[Market Size]
+    PARAMS --> TR[Traction]
+    PARAMS --> FS[Financials]
+    PARAMS --> PS[Product Uniqueness]
+    PARAMS --> CS[Competition Analysis]
+    PARAMS --> BS[Business Model]
+    PARAMS --> RS[Risk Factors]
 ```
 
 #### **Layer 4: Intelligence & Output**
 ```mermaid
 graph TB
-    SCORES[📊 Parameter Scores] --> RF_ENGINE[🚨 Red Flag Detector<br/>detect_red_flags]
-    SCORES --> REC_ENGINE[💡 Recommendation Engine<br/>generate_recommendations]
-    BENCH[📈 Benchmarks] --> REC_ENGINE
+    SCORES[Parameter Scores] --> RF_ENGINE[Red Flag Detector]
+    SCORES --> REC_ENGINE[Recommendation Engine]
+    BENCH[Benchmarks] --> REC_ENGINE
     
-    RF_ENGINE --> OUTPUT[📋 Final Results]
+    RF_ENGINE --> OUTPUT[Final Results]
     REC_ENGINE --> OUTPUT
     
-    OUTPUT --> DASHBOARD[📊 Interactive Dashboard]
-    
-    style SCORES fill:#f57c00,color:#ffffff,stroke:#e65100,stroke-width:2px
-    style RF_ENGINE fill:#388e3c,color:#ffffff,stroke:#1b5e20,stroke-width:2px
-    style REC_ENGINE fill:#388e3c,color:#ffffff,stroke:#1b5e20,stroke-width:2px
-    style BENCH fill:#d32f2f,color:#ffffff,stroke:#b71c1c,stroke-width:2px
-    style OUTPUT fill:#d32f2f,color:#ffffff,stroke:#b71c1c,stroke-width:2px
-    style DASHBOARD fill:#1976d2,color:#ffffff,stroke:#0d47a1,stroke-width:2px
+    OUTPUT --> DASHBOARD[Interactive Dashboard]
 ```
 
 ### 🧩 Detailed Component Architecture
