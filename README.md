@@ -15,6 +15,9 @@
 
 **GenAI Hackathon** is an intelligent startup analysis platform that leverages AI to evaluate startups and provide investment insights. The system analyzes pitch decks, call transcripts, and other business documents to generate comprehensive scoring reports with actionable recommendations.
 
+### 📋 **Hackathon Documentation**
+🔗 **[Gen AI Exchange Hackathon Syncing Doc](https://docs.google.com/document/d/1Ll4_gXUX88Tt-9rIGWxXLOzS1FB-LyOw9NBrFh9YXA8/edit?usp=sharing)** - Official hackathon coordination and project details
+
 ### 🎪 Demo
 ```bash
 streamlit run app.py
