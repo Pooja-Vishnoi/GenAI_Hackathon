@@ -171,23 +171,6 @@ sequenceDiagram
     I->>UI: Updated Results
 ```
 
-### ⚡ Processing Performance
-
-| **Component** | **Processing Time** | **Accuracy** | **Key Function** |
-|---------------|-------------------|--------------|------------------|
-| File Reader | ~1-3 seconds | 99% | [`read_files()`](Utils/utils.py#L42-51) |
-| Parameter Extraction | ~2-5 seconds | 85% | [`content_to_json()`](Utils/pdf_file_reader.py#L15-51) |
-| Scoring Engine | ~0.5 seconds | 90% | [`convert_raw_to_structured()`](Utils/structured_2_scored_data.py#L69-146) |
-| Intelligence Layer | ~0.2 seconds | 80% | [`detect_red_flags()`](analyse_pipeline.py#L88-110) |
-
-### 🎯 System Design Principles
-
-1. **Modular Architecture** - Each component has single responsibility
-2. **Scalable Processing** - Pipeline supports batch and real-time analysis
-3. **Interactive Feedback** - Users can modify parameters and see instant results
-4. **Extensible Scoring** - Easy to add new parameters and scoring algorithms
-5. **Benchmark-Driven** - Industry-specific performance comparisons
-
 ### 🔄 Execution Flow
 
 #### **Initial Analysis Flow** (When User Clicks "🔍 Analyse")
