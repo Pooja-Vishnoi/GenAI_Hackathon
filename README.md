@@ -175,29 +175,29 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant User
+    participant U as User
     participant UI as Streamlit UI
-    participant Pipeline as Main Pipeline
-    participant FileReader as File Reader
-    participant Extractor as Parameter Extractor
-    participant Scorer as Scoring Engine
-    participant Analyzer as Analysis Engine
-    participant Intelligence as Intelligence Layer
+    participant P as Main Pipeline
+    participant FR as File Reader
+    participant E as Parameter Extractor
+    participant S as Scoring Engine
+    participant A as Analysis Engine
+    participant I as Intelligence Layer
     
-    User->>UI: Upload Documents
-    UI->>Pipeline: Trigger Analysis
-    Pipeline->>FileReader: Process Files
-    FileReader->>Extractor: Extract Content
-    Extractor->>Scorer: Convert to Parameters
-    Scorer->>Analyzer: Apply Scoring Logic
-    Analyzer->>Intelligence: Generate Insights
-    Intelligence->>UI: Return Results
-    UI->>User: Display Dashboard
+    U->>UI: Upload Documents
+    UI->>P: Trigger Analysis
+    P->>FR: Process Files
+    FR->>E: Extract Content
+    E->>S: Convert to Parameters
+    S->>A: Apply Scoring Logic
+    A->>I: Generate Insights
+    I->>UI: Return Results
+    UI->>U: Display Dashboard
     
-    Note over User,Intelligence: Real-time interaction loop
-    User->>UI: Modify Parameters
-    UI->>Intelligence: Recalculate
-    Intelligence->>UI: Updated Results
+    Note over U,I: Real-time interaction loop
+    U->>UI: Modify Parameters
+    UI->>I: Recalculate
+    I->>UI: Updated Results
 ```
 
 ### ⚡ Processing Performance
@@ -223,56 +223,56 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    START([User Clicks Analyse]) --> VALIDATE{Pitch Deck<br/>Uploaded?}
-    VALIDATE -->|No| ERROR[❌ Show Error:<br/>Pitch Deck Required]
-    VALIDATE -->|Yes| TRIGGER[⚡ Trigger Analysis<br/>app.py:29]
+    START([User Clicks Analyse]) --> VALIDATE{Pitch Deck Uploaded?}
+    VALIDATE -->|No| ERROR[Show Error: Pitch Deck Required]
+    VALIDATE -->|Yes| TRIGGER[Trigger Analysis]
     
-    TRIGGER --> CALL_CREATE[📞 Call create_results<br/>analyse_pipeline.py:7]
-    CALL_CREATE --> READ_FILES[📁 read_files<br/>Utils/utils.py:42]
+    TRIGGER --> CALL_CREATE[Call create_results]
+    CALL_CREATE --> READ_FILES[read_files]
     
-    READ_FILES --> LOOP_FILES{For Each<br/>Uploaded File}
-    LOOP_FILES --> READ_SINGLE[📄 read_file<br/>Utils/utils.py:8]
+    READ_FILES --> LOOP_FILES{For Each File}
+    LOOP_FILES --> READ_SINGLE[read_file]
     READ_SINGLE --> CHECK_TYPE{File Type?}
     
-    CHECK_TYPE -->|PDF| PDF_EXTRACT[📑 PyPDF2 Extract<br/>utils.py:22-24]
-    CHECK_TYPE -->|DOCX| DOCX_EXTRACT[📝 python-docx Extract<br/>utils.py:28-30]
-    CHECK_TYPE -->|TXT| TXT_EXTRACT[📃 UTF-8 Decode<br/>utils.py:34]
+    CHECK_TYPE -->|PDF| PDF_EXTRACT[PyPDF2 Extract]
+    CHECK_TYPE -->|DOCX| DOCX_EXTRACT[python-docx Extract]
+    CHECK_TYPE -->|TXT| TXT_EXTRACT[UTF-8 Decode]
     
-    PDF_EXTRACT --> CONTENT_DICT[📋 Build Content Dict]
+    PDF_EXTRACT --> CONTENT_DICT[Build Content Dict]
     DOCX_EXTRACT --> CONTENT_DICT
     TXT_EXTRACT --> CONTENT_DICT
     
     CONTENT_DICT --> MORE_FILES{More Files?}
     MORE_FILES -->|Yes| LOOP_FILES
-    MORE_FILES -->|No| EXTRACT_PARAMS[🤖 content_to_json<br/>pdf_file_reader.py:15]
+    MORE_FILES -->|No| EXTRACT_PARAMS[content_to_json]
     
-    EXTRACT_PARAMS --> JSON_PARAMS[📊 Structured JSON<br/>company, sector, team, etc.]
-    JSON_PARAMS --> CREATE_DF[📈 Create DataFrame<br/>analyse_pipeline.py:23]
-    CREATE_DF --> FILTER_DF[🔍 Filter Parameters<br/>analyse_pipeline.py:29]
+    EXTRACT_PARAMS --> JSON_PARAMS[Structured JSON]
+    JSON_PARAMS --> CREATE_DF[Create DataFrame]
+    CREATE_DF --> FILTER_DF[Filter Parameters]
     
-    FILTER_DF --> SCORE_CONVERT[🎯 convert_raw_to_structured<br/>structured_2_scored_data.py:69]
+    FILTER_DF --> SCORE_CONVERT[convert_raw_to_structured]
     SCORE_CONVERT --> SCORE_PARAMS{Score Each Parameter}
     
-    SCORE_PARAMS --> TEAM_SCORE[👥 parse_team<br/>lines 44-51]
-    SCORE_PARAMS --> MARKET_SCORE[🌍 parse_market_size<br/>lines 9-24]
-    SCORE_PARAMS --> TRACTION_SCORE[📈 parse_traction<br/>lines 26-42]
-    SCORE_PARAMS --> OTHER_SCORES[💰 Other Scorers<br/>Financial, Product, etc.]
+    SCORE_PARAMS --> TEAM_SCORE[parse_team]
+    SCORE_PARAMS --> MARKET_SCORE[parse_market_size]
+    SCORE_PARAMS --> TRACTION_SCORE[parse_traction]
+    SCORE_PARAMS --> OTHER_SCORES[Other Scorers]
     
-    TEAM_SCORE --> ADD_WEIGHTS[⚖️ Add Weights & Benchmarks<br/>lines 140-142]
+    TEAM_SCORE --> ADD_WEIGHTS[Add Weights & Benchmarks]
     MARKET_SCORE --> ADD_WEIGHTS
     TRACTION_SCORE --> ADD_WEIGHTS
     OTHER_SCORES --> ADD_WEIGHTS
     
-    ADD_WEIGHTS --> CALC_WEIGHTED[🧮 Calculate Weighted Scores<br/>analyse_pipeline.py:38]
-    CALC_WEIGHTED --> FINAL_SCORE[🏆 Sum Final Score<br/>analyse_pipeline.py:41]
+    ADD_WEIGHTS --> CALC_WEIGHTED[Calculate Weighted Scores]
+    CALC_WEIGHTED --> FINAL_SCORE[Sum Final Score]
     
-    FINAL_SCORE --> DETECT_FLAGS[🚨 detect_red_flags<br/>analyse_pipeline.py:46]
-    DETECT_FLAGS --> GEN_RECS[💡 generate_recommendations<br/>analyse_pipeline.py:49]
+    FINAL_SCORE --> DETECT_FLAGS[detect_red_flags]
+    DETECT_FLAGS --> GEN_RECS[generate_recommendations]
     
-    GEN_RECS --> RETURN_RESULTS[📤 Return Results<br/>summary_df, results_df, score, flags, recs]
-    RETURN_RESULTS --> UPDATE_SESSION[💾 Update Session State<br/>app.py:30-32]
-    UPDATE_SESSION --> RERUN[🔄 st.rerun<br/>app.py:33]
-    RERUN --> SHOW_DASHBOARD[📊 Display Dashboard<br/>app.py:35-89]
+    GEN_RECS --> RETURN_RESULTS[Return Results]
+    RETURN_RESULTS --> UPDATE_SESSION[Update Session State]
+    UPDATE_SESSION --> RERUN[st.rerun]
+    RERUN --> SHOW_DASHBOARD[Display Dashboard]
     
     ERROR --> END([End])
     SHOW_DASHBOARD --> END
@@ -282,19 +282,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START([User Clicks Analyse Again]) --> TRIGGER[⚡ Button Click<br/>app.py:94]
-    TRIGGER --> CALL_ANALYZE[📞 Call analyze_results<br/>app.py:96]
+    START([User Clicks Analyse Again]) --> TRIGGER[Button Click]
+    TRIGGER --> CALL_ANALYZE[Call analyze_results]
     
-    CALL_ANALYZE --> GET_DF[📊 Get Current DataFrame<br/>st.session_state.results_df]
-    GET_DF --> RECALC_WEIGHTED[🧮 Recalculate Weighted Scores<br/>analyse_pipeline.py:122]
-    RECALC_WEIGHTED --> NEW_FINAL[🏆 New Final Score<br/>analyse_pipeline.py:125]
+    CALL_ANALYZE --> GET_DF[Get Current DataFrame]
+    GET_DF --> RECALC_WEIGHTED[Recalculate Weighted Scores]
+    RECALC_WEIGHTED --> NEW_FINAL[New Final Score]
     
-    NEW_FINAL --> REFRESH_FLAGS[🚨 Refresh Red Flags<br/>analyse_pipeline.py:128]
-    REFRESH_FLAGS --> REFRESH_RECS[💡 Refresh Recommendations<br/>analyse_pipeline.py:131]
+    NEW_FINAL --> REFRESH_FLAGS[Refresh Red Flags]
+    REFRESH_FLAGS --> REFRESH_RECS[Refresh Recommendations]
     
-    REFRESH_RECS --> UPDATE_SESSION[💾 Update Session Variables<br/>app.py:97-99]
-    UPDATE_SESSION --> RERUN[🔄 st.rerun<br/>app.py:100]
-    RERUN --> UPDATED_DASHBOARD[📊 Updated Dashboard Display]
+    REFRESH_RECS --> UPDATE_SESSION[Update Session Variables]
+    UPDATE_SESSION --> RERUN[st.rerun]
+    RERUN --> UPDATED_DASHBOARD[Updated Dashboard Display]
     
     UPDATED_DASHBOARD --> END([End])
 ```
@@ -303,13 +303,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START([User Edits Parameter in Data Editor]) --> STREAMLIT_UPDATE[🔄 Streamlit Auto-Update<br/>app.py:49-55]
-    STREAMLIT_UPDATE --> SESSION_UPDATE[💾 Session State Updated<br/>st.session_state.results_df]
-    SESSION_UPDATE --> METRICS_CALC[📊 Calculate Metrics<br/>app.py:38]
+    START([User Edits Parameter]) --> STREAMLIT_UPDATE[Streamlit Auto-Update]
+    STREAMLIT_UPDATE --> SESSION_UPDATE[Session State Updated]
+    SESSION_UPDATE --> METRICS_CALC[Calculate Metrics]
     
-    METRICS_CALC --> CALL_ANALYZE[📞 analyze_results<br/>analyse_pipeline.py:120]
-    CALL_ANALYZE --> INSTANT_RECALC[⚡ Instant Recalculation<br/>Weighted scores, flags, recs]
-    INSTANT_RECALC --> DISPLAY_UPDATE[📈 Display Updates<br/>Score, charts, flags]
+    METRICS_CALC --> CALL_ANALYZE[analyze_results]
+    CALL_ANALYZE --> INSTANT_RECALC[Instant Recalculation]
+    INSTANT_RECALC --> DISPLAY_UPDATE[Display Updates]
     
     DISPLAY_UPDATE --> END([Real-time UI Update])
 ```
