@@ -16,7 +16,7 @@
 **GenAI Hackathon** is an intelligent startup analysis platform that leverages AI to evaluate startups and provide investment insights. The system analyzes pitch decks, call transcripts, and other business documents to generate comprehensive scoring reports with actionable recommendations.
 
 ### 📋 **Hackathon Documentation**
-🔗 **[Gen AI Exchange Hackathon Syncing Doc](https://docs.google.com/document/d/1Ll4_gXUX88Tt-9rIGWxXLOzS1FB-LyOw9NBrFh9YXA8/edit?usp=sharing)** - Official hackathon coordination and project details
+🔗 **[Gen AI Exchange Hackathon Syncing Doc](https://docs.google.com/document/d/1Ll4_gXUX88Tt-9rIGWxXLOzS1FB-LyOw9NBrFh9YXA8/edit?usp=sharing)**
 
 ### 🎪 Demo
 ```bash
@@ -44,9 +44,9 @@ Visit `http://localhost:8501` to access the web interface.
 - **Export Reports**: Download analysis results (coming soon)
 
 ### 🤖 **AI Integration**
-- **Smart Extraction**: AI-powered parameter extraction from documents
-- **Recommendation Engine**: Contextual investment recommendations
-- **Risk Assessment**: Intelligent risk factor identification
+- **Smart Extraction**: AI-powered parameter extraction from documents 🚧 **[PLANNED]**
+- **Recommendation Engine**: Contextual investment recommendations ✅ **[IMPLEMENTED]**
+- **Risk Assessment**: Intelligent risk factor identification ✅ **[IMPLEMENTED]**
 
 ## 🏗️ Architecture
 
@@ -423,13 +423,14 @@ GenAI_Hackathon/
 - **DOCX/DOC Processing**: python-docx integration ([`read_file()` lines 26-32](Utils/utils.py#L26-L32)) 
 - **TXT Processing**: UTF-8 decoding ([`read_file()` lines 34-35](Utils/utils.py#L34-L35))
 
-### 2. AI Analysis & Content Extraction
+### 2. AI Analysis & Content Extraction 🚧 **[PARTIALLY IMPLEMENTED]**
 **Content Structure Conversion**
-- **Main Function**: [`content_to_json()`](Utils/pdf_file_reader.py#L15-L51) in `Utils/pdf_file_reader.py`
-- **DataFrame Creation**: See [`analyse_pipeline.py:23-28`](analyse_pipeline.py#L23-L28) for parameter extraction
-- **Data Filtering**: Non-evaluating parameters removed ([lines 29-30](analyse_pipeline.py#L29-L30))
+- **Main Function**: [`content_to_json()`](Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]** - Currently uses sample data
+- **DataFrame Creation**: See [`analyse_pipeline.py:23-28`](analyse_pipeline.py#L23-L28) ✅ **[WORKING]** - Parameter extraction pipeline
+- **Data Filtering**: Non-evaluating parameters removed ([lines 29-30](analyse_pipeline.py#L29-L30)) ✅ **[WORKING]**
 
 **Output Format**: Structured JSON with company parameters (name, sector, team, market, traction, revenue, USP, competition, risks)
+**Note**: ⚠️ Currently uses hardcoded sample data - AI integration needed for production use
 
 ### 3. Scoring Pipeline
 **Parameter Scoring Functions** - All in [`Utils/structured_2_scored_data.py`](Utils/structured_2_scored_data.py):
@@ -491,10 +492,11 @@ GenAI_Hackathon/
 **Purpose**: Batch file processing for multiple document types
 **Calls**: [`read_file()`](Utils/utils.py#L8-L39) for individual file processing
 
-#### [`content_to_json(content)`](Utils/pdf_file_reader.py#L15-L51)
+#### [`content_to_json(content)`](Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]**
 *Location: `Utils/pdf_file_reader.py:15-51`*  
-**Purpose**: Converts raw text to structured startup parameters
-**Note**: Currently uses sample data; ready for LLM integration
+**Purpose**: Converts raw text to structured startup parameters using AI/LLM
+**Current Status**: ⚠️ Uses hardcoded sample data - **AI integration pending**
+**Next Steps**: Integrate with GPT-4/Claude for dynamic content analysis
 
 #### [`convert_raw_to_structured(raw_df)`](Utils/structured_2_scored_data.py#L69-L146)
 *Location: `Utils/structured_2_scored_data.py:69-146`*
