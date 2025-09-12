@@ -110,31 +110,31 @@ graph TB
 ### 🧩 Detailed Component Architecture
 
 #### **1. User Interface Layer** 
-- **[`Streamlit Web App`](app.py)** - Main application interface
-  - **File Upload Interface** (lines 18-23): Multi-format document upload with validation
-  - **Interactive Dashboard** (lines 35-89): Real-time results display and editing
-  - **Data Visualizations** (lines 78-89): Charts, trends, and benchmark comparisons
+- **[`Streamlit Web App`](./app.py)** - Main application interface
+  - **[File Upload Interface](./app.py#L18-L23)**: Multi-format document upload with validation
+  - **[Interactive Dashboard](./app.py#L35-L89)**: Real-time results display and editing
+  - **[Data Visualizations](./app.py#L78-L89)**: Charts, trends, and benchmark comparisons
 
 #### **2. Processing Pipeline Layer**
-- **[`Main Pipeline`](analyse_pipeline.py#L7-55)** - Orchestrates entire analysis workflow
-  - **[`File Reader`](Utils/utils.py#L42-51)** - Batch processing of uploaded documents
-  - **[`Parameter Extractor`](Utils/pdf_file_reader.py#L15-51)** - AI-powered content analysis
-  - **[`Scoring Engine`](Utils/structured_2_scored_data.py#L69-146)** - Transforms text to numerical scores
+- **[`Main Pipeline`](./analyse_pipeline.py#L7-L55)** - Orchestrates entire analysis workflow
+  - **[`File Reader`](./Utils/utils.py#L42-L51)** - Batch processing of uploaded documents
+  - **[`Parameter Extractor`](./Utils/pdf_file_reader.py#L15-L51)** - AI-powered content analysis
+  - **[`Scoring Engine`](./Utils/structured_2_scored_data.py#L69-L146)** - Transforms text to numerical scores
 
 #### **3. Analysis Engine** - 8-Parameter Evaluation System
-- **[`Team Scorer`](Utils/structured_2_scored_data.py#L44-51)** - Educational background + experience analysis
-- **[`Market Analyzer`](Utils/structured_2_scored_data.py#L9-24)** - TAM size evaluation with regex parsing
-- **[`Traction Evaluator`](Utils/structured_2_scored_data.py#L26-42)** - User growth + MoM metrics
-- **Financial Scorer** - Revenue, ARR, burn rate assessment
-- **Product Scorer** - Innovation, differentiation, AI/tech analysis
-- **Competition Analyzer** - Market saturation and competitive positioning
-- **Business Model Scorer** - Revenue model clarity and scalability
-- **Risk Assessor** - Regulatory, operational, market risk evaluation
+- **[`Team Scorer`](./Utils/structured_2_scored_data.py#L44-L51)** - Educational background + experience analysis
+- **[`Market Analyzer`](./Utils/structured_2_scored_data.py#L9-L24)** - TAM size evaluation with regex parsing
+- **[`Traction Evaluator`](./Utils/structured_2_scored_data.py#L26-L42)** - User growth + MoM metrics
+- **[Financial Scorer](./Utils/structured_2_scored_data.py#L87)** - Revenue, ARR, burn rate assessment
+- **[Product Scorer](./Utils/structured_2_scored_data.py#L88)** - Innovation, differentiation, AI/tech analysis
+- **[Competition Analyzer](./Utils/structured_2_scored_data.py#L89-L91)** - Market saturation and competitive positioning
+- **[Business Model Scorer](./Utils/structured_2_scored_data.py#L92)** - Revenue model clarity and scalability
+- **[Risk Assessor](./Utils/structured_2_scored_data.py#L93)** - Regulatory, operational, market risk evaluation
 
 #### **4. Intelligence Layer** - Advanced Analytics
-- **[`Red Flag Detector`](analyse_pipeline.py#L88-110)** - Threshold-based risk identification
-- **[`Recommendation Engine`](analyse_pipeline.py#L112-118)** - Actionable insights generation
-- **[`Benchmark Comparator`](data/sector_benchmarks.csv)** - Industry-specific performance analysis
+- **[`Red Flag Detector`](./analyse_pipeline.py#L88-L110)** - Threshold-based risk identification
+- **[`Recommendation Engine`](./analyse_pipeline.py#L112-L118)** - Actionable insights generation
+- **[`Benchmark Comparator`](./data/sector_benchmarks.csv)** - Industry-specific performance analysis
 
 #### **5. Data Layer** - Information Management
 - **Input Documents** - Multi-format file processing (PDF, DOCX, TXT)
@@ -272,22 +272,22 @@ flowchart TD
 
 | **Execution Stage** | **Function Called** | **File Location** | **Processing Time** |
 |---------------------|-------------------|------------------|-------------------|
-| **File Upload Validation** | File upload check | [`app.py:26-27`](app.py#L26-L27) | ~0.1s |
-| **File Content Reading** | [`read_files()`](Utils/utils.py#L42-51) | `Utils/utils.py` | ~1-3s |
-| **Parameter Extraction** | [`content_to_json()`](Utils/pdf_file_reader.py#L15-51) | `Utils/pdf_file_reader.py` | ~2-5s |
-| **Scoring Conversion** | [`convert_raw_to_structured()`](Utils/structured_2_scored_data.py#L69-146) | `Utils/structured_2_scored_data.py` | ~0.5s |
-| **Individual Parameter Scoring** | [`parse_team()`](Utils/structured_2_scored_data.py#L44-51), [`parse_market_size()`](Utils/structured_2_scored_data.py#L9-24), etc. | `Utils/structured_2_scored_data.py` | ~0.2s |
-| **Final Score Calculation** | Weighted sum | [`analyse_pipeline.py:38-41`](analyse_pipeline.py#L38-L41) | ~0.1s |
-| **Red Flag Detection** | [`detect_red_flags()`](analyse_pipeline.py#L88-110) | `analyse_pipeline.py` | ~0.1s |
-| **Recommendation Generation** | [`generate_recommendations()`](analyse_pipeline.py#L112-118) | `analyse_pipeline.py` | ~0.1s |
-| **Dashboard Display** | Streamlit rendering | [`app.py:35-89`](app.py#L35-L89) | ~0.5s |
+| **File Upload Validation** | File upload check | [`app.py:26-27`](./app.py#L26-L27) | ~0.1s |
+| **File Content Reading** | [`read_files()`](./Utils/utils.py#L42-L51) | `Utils/utils.py` | ~1-3s |
+| **Parameter Extraction** | [`content_to_json()`](./Utils/pdf_file_reader.py#L15-L51) | `Utils/pdf_file_reader.py` | ~2-5s |
+| **Scoring Conversion** | [`convert_raw_to_structured()`](./Utils/structured_2_scored_data.py#L69-L146) | `Utils/structured_2_scored_data.py` | ~0.5s |
+| **Individual Parameter Scoring** | [`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51), [`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24), etc. | `Utils/structured_2_scored_data.py` | ~0.2s |
+| **Final Score Calculation** | Weighted sum | [`analyse_pipeline.py:38-41`](./analyse_pipeline.py#L38-L41) | ~0.1s |
+| **Red Flag Detection** | [`detect_red_flags()`](./analyse_pipeline.py#L88-L110) | `analyse_pipeline.py` | ~0.1s |
+| **Recommendation Generation** | [`generate_recommendations()`](./analyse_pipeline.py#L112-L118) | `analyse_pipeline.py` | ~0.1s |
+| **Dashboard Display** | Streamlit rendering | [`app.py:35-89`](./app.py#L35-L89) | ~0.5s |
 
 #### **Error Handling Points**
 
-- **File Upload Validation** - [`app.py:26-28`](app.py#L26-L28) - Missing pitch deck check
-- **File Reading Errors** - [`Utils/utils.py:30-31`](Utils/utils.py#L30-L31) - DOCX processing exceptions  
-- **Content Extraction** - [`Utils/pdf_file_reader.py`](Utils/pdf_file_reader.py) - Malformed document handling
-- **Scoring Validation** - [`Utils/structured_2_scored_data.py`](Utils/structured_2_scored_data.py) - Invalid parameter values
+- **File Upload Validation** - [`app.py:26-28`](./app.py#L26-L28) - Missing pitch deck check
+- **File Reading Errors** - [`Utils/utils.py:30-31`](./Utils/utils.py#L30-L31) - DOCX processing exceptions  
+- **Content Extraction** - [`Utils/pdf_file_reader.py`](./Utils/pdf_file_reader.py) - Malformed document handling
+- **Scoring Validation** - [`Utils/structured_2_scored_data.py`](./Utils/structured_2_scored_data.py) - Invalid parameter values
 
 ## 🚀 Installation
 
@@ -397,67 +397,67 @@ GenAI_Hackathon/
 
 ### 1. Input Processing
 **File Upload & Validation**
-- **UI Components**: See [`app.py:18-23`](app.py#L18-L23) for Streamlit file uploaders
-- **File Processing**: [`read_files()`](Utils/utils.py#L42-L51) function in `Utils/utils.py`
-- **Individual File Reading**: [`read_file()`](Utils/utils.py#L8-L39) function in `Utils/utils.py`
+- **UI Components**: See [`app.py:18-23`](./app.py#L18-L23) for Streamlit file uploaders
+- **File Processing**: [`read_files()`](./Utils/utils.py#L42-L51) function in `Utils/utils.py`
+- **Individual File Reading**: [`read_file()`](./Utils/utils.py#L8-L39) function in `Utils/utils.py`
 
 **Supported Operations:**
-- **PDF Processing**: PyPDF2-based text extraction ([`read_file()` lines 18-24](Utils/utils.py#L18-L24))
-- **DOCX/DOC Processing**: python-docx integration ([`read_file()` lines 26-32](Utils/utils.py#L26-L32)) 
-- **TXT Processing**: UTF-8 decoding ([`read_file()` lines 34-35](Utils/utils.py#L34-L35))
+- **PDF Processing**: PyPDF2-based text extraction ([`read_file()` lines 18-24](./Utils/utils.py#L18-L24))
+- **DOCX/DOC Processing**: python-docx integration ([`read_file()` lines 26-32](./Utils/utils.py#L26-L32)) 
+- **TXT Processing**: UTF-8 decoding ([`read_file()` lines 34-35](./Utils/utils.py#L34-L35))
 
 ### 2. AI Analysis & Content Extraction 🚧 **[PARTIALLY IMPLEMENTED]**
 **Content Structure Conversion**
-- **Main Function**: [`content_to_json()`](Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]** - Currently uses sample data
-- **DataFrame Creation**: See [`analyse_pipeline.py:23-28`](analyse_pipeline.py#L23-L28) ✅ **[WORKING]** - Parameter extraction pipeline
-- **Data Filtering**: Non-evaluating parameters removed ([lines 29-30](analyse_pipeline.py#L29-L30)) ✅ **[WORKING]**
+- **Main Function**: [`content_to_json()`](./Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]** - Currently uses sample data
+- **DataFrame Creation**: See [`analyse_pipeline.py:23-28`](./analyse_pipeline.py#L23-L28) ✅ **[WORKING]** - Parameter extraction pipeline
+- **Data Filtering**: Non-evaluating parameters removed ([lines 29-30](./analyse_pipeline.py#L29-L30)) ✅ **[WORKING]**
 
 **Output Format**: Structured JSON with company parameters (name, sector, team, market, traction, revenue, USP, competition, risks)
 **Note**: ⚠️ Currently uses hardcoded sample data - AI integration needed for production use
 
 ### 3. Scoring Pipeline
-**Parameter Scoring Functions** - All in [`Utils/structured_2_scored_data.py`](Utils/structured_2_scored_data.py):
-- **Team Quality**: [`parse_team()`](Utils/structured_2_scored_data.py#L44-L51) function - IIT/IIM bonus scoring
-- **Market Size**: [`parse_market_size()`](Utils/structured_2_scored_data.py#L9-L24) function - Billion/Million market analysis  
-- **Traction**: [`parse_traction()`](Utils/structured_2_scored_data.py#L26-L42) function - User growth and MoM metrics
-- **Other Parameters**: [Lines 84-94](Utils/structured_2_scored_data.py#L84-L94) for Financials, Product Uniqueness, Competition, etc.
+**Parameter Scoring Functions** - All in [`Utils/structured_2_scored_data.py`](./Utils/structured_2_scored_data.py):
+- **Team Quality**: [`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51) function - IIT/IIM bonus scoring
+- **Market Size**: [`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24) function - Billion/Million market analysis  
+- **Traction**: [`parse_traction()`](./Utils/structured_2_scored_data.py#L26-L42) function - User growth and MoM metrics
+- **Other Parameters**: [Lines 84-94](./Utils/structured_2_scored_data.py#L84-L94) for Financials, Product Uniqueness, Competition, etc.
 
 **Weighted Calculation**:
-- **Weights Definition**: [Lines 117-126](Utils/structured_2_scored_data.py#L117-L126) in structured_2_scored_data.py
-- **Score Calculation**: [`analyse_pipeline.py:38-43`](analyse_pipeline.py#L38-L43) for weighted final score
+- **Weights Definition**: [Lines 117-126](./Utils/structured_2_scored_data.py#L117-L126) in structured_2_scored_data.py
+- **Score Calculation**: [`analyse_pipeline.py:38-43`](./analyse_pipeline.py#L38-L43) for weighted final score
 
 ### 4. Analysis Output & Risk Detection
 **Red Flag Detection**
-- **Function**: [`detect_red_flags()`](analyse_pipeline.py#L88-L110) in `analyse_pipeline.py`
+- **Function**: [`detect_red_flags()`](./analyse_pipeline.py#L88-L110) in `analyse_pipeline.py`
 - **Logic**: Compares scores against thresholds with page references
 
 **Recommendation Engine**
-- **Function**: [`generate_recommendations()`](analyse_pipeline.py#L112-L118) in `analyse_pipeline.py`
+- **Function**: [`generate_recommendations()`](./analyse_pipeline.py#L112-L118) in `analyse_pipeline.py`
 - **Output**: Parameter-specific actionable insights
 
 ## 🔧 API Reference
 
 ### Core Functions
 
-#### [`create_results(uploaded_files)`](analyse_pipeline.py#L7-L55)
+#### [`create_results(uploaded_files)`](./analyse_pipeline.py#L7-L55)
 *Location: `analyse_pipeline.py:7-55`*
 
 **Purpose**: Main analysis pipeline that processes uploaded files and generates comprehensive startup evaluation.
 
 **Process Flow**:
-1. Extract content from files using [`read_files()`](Utils/utils.py#L42-L51) 
-2. Convert to structured JSON via [`content_to_json()`](Utils/pdf_file_reader.py#L15-L51)
-3. Create parameter DataFrame ([`create_results()` lines 23-28](analyse_pipeline.py#L23-L28))
-4. Apply scoring algorithms via [`convert_raw_to_structured()`](Utils/structured_2_scored_data.py#L69-L146)
+1. Extract content from files using [`read_files()`](./Utils/utils.py#L42-L51) 
+2. Convert to structured JSON via [`content_to_json()`](./Utils/pdf_file_reader.py#L15-L51)
+3. Create parameter DataFrame ([`create_results()` lines 23-28](./analyse_pipeline.py#L23-L28))
+4. Apply scoring algorithms via [`convert_raw_to_structured()`](./Utils/structured_2_scored_data.py#L69-L146)
 5. Calculate weighted scores and final rating
-6. Generate red flags via [`detect_red_flags()`](analyse_pipeline.py#L88-L110) and recommendations via [`generate_recommendations()`](analyse_pipeline.py#L112-L118)
+6. Generate red flags via [`detect_red_flags()`](./analyse_pipeline.py#L88-L110) and recommendations via [`generate_recommendations()`](./analyse_pipeline.py#L112-L118)
 
 **Parameters**: `uploaded_files` - List of Streamlit file objects
 **Returns**: summary_df, results_df, final_score, flags, recommendations
 
 ---
 
-#### [`analyze_results(structured_df)`](analyse_pipeline.py#L120-L135)
+#### [`analyze_results(structured_df)`](./analyse_pipeline.py#L120-L135)
 *Location: `analyse_pipeline.py:120-135`*
 
 **Purpose**: Re-analyzes data after user modifications in interactive dashboard.
@@ -470,60 +470,60 @@ GenAI_Hackathon/
 
 ### Utility Functions
 
-#### [`read_files(uploaded_files)`](Utils/utils.py#L42-L51)
+#### [`read_files(uploaded_files)`](./Utils/utils.py#L42-L51)
 *Location: `Utils/utils.py:42-51`*
 **Purpose**: Batch file processing for multiple document types
-**Calls**: [`read_file()`](Utils/utils.py#L8-L39) for individual file processing
+**Calls**: [`read_file()`](./Utils/utils.py#L8-L39) for individual file processing
 
-#### [`content_to_json(content)`](Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]**
+#### [`content_to_json(content)`](./Utils/pdf_file_reader.py#L15-L51) 🚧 **[TO BE IMPLEMENTED]**
 *Location: `Utils/pdf_file_reader.py:15-51`*  
 **Purpose**: Converts raw text to structured startup parameters using AI/LLM
 **Current Status**: ⚠️ Uses hardcoded sample data - **AI integration pending**
 **Next Steps**: Integrate with GPT-4/Claude for dynamic content analysis
 
-#### [`convert_raw_to_structured(raw_df)`](Utils/structured_2_scored_data.py#L69-L146)
+#### [`convert_raw_to_structured(raw_df)`](./Utils/structured_2_scored_data.py#L69-L146)
 *Location: `Utils/structured_2_scored_data.py:69-146`*
 **Purpose**: Transforms parameters into scored format with benchmarks
-**Key Functions**: Uses [`parse_team()`](Utils/structured_2_scored_data.py#L44-L51), [`parse_market_size()`](Utils/structured_2_scored_data.py#L9-L24), [`parse_traction()`](Utils/structured_2_scored_data.py#L26-L42) for scoring
+**Key Functions**: Uses [`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51), [`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24), [`parse_traction()`](./Utils/structured_2_scored_data.py#L26-L42) for scoring
 
 ### Scoring Functions
-*All located in [`Utils/structured_2_scored_data.py`](Utils/structured_2_scored_data.py)*
+*All located in [`Utils/structured_2_scored_data.py`](./Utils/structured_2_scored_data.py)*
 
-- **[`parse_team()`](Utils/structured_2_scored_data.py#L44-L51)**: Team background scoring with IIT/IIM bonuses
-- **[`parse_market_size()`](Utils/structured_2_scored_data.py#L9-L24)**: Market size analysis with B/M regex parsing  
-- **[`parse_traction()`](Utils/structured_2_scored_data.py#L26-L42)**: User growth and MoM metrics evaluation
-- **[Weight/Benchmark Configs](Utils/structured_2_scored_data.py#L106-L137)**: Parameter weights, thresholds, benchmarks
+- **[`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51)**: Team background scoring with IIT/IIM bonuses
+- **[`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24)**: Market size analysis with B/M regex parsing  
+- **[`parse_traction()`](./Utils/structured_2_scored_data.py#L26-L42)**: User growth and MoM metrics evaluation
+- **[Weight/Benchmark Configs](./Utils/structured_2_scored_data.py#L106-L137)**: Parameter weights, thresholds, benchmarks
 
 ## ⚙️ Configuration
 
 ### Scoring Parameters
-**Parameter Weights** - See `Utils/structured_2_scored_data.py:117-126`
+**Parameter Weights** - See [`Utils/structured_2_scored_data.py:117-126`](./Utils/structured_2_scored_data.py#L117-L126)
 - All weights sum to 1.0 for normalized scoring
 - Team, Market, Traction, Product get 15% each (highest priority)
 - Other parameters get 10% each
 
-**Risk Thresholds** - See `Utils/structured_2_scored_data.py:128-137`
+**Risk Thresholds** - See [`Utils/structured_2_scored_data.py:128-137`](./Utils/structured_2_scored_data.py#L128-L137)
 - Minimum acceptable scores for red flag detection
 - Default threshold: 3/10 for all parameters
 
-**Industry Benchmarks** - See `Utils/structured_2_scored_data.py:106-115`
+**Industry Benchmarks** - See [`Utils/structured_2_scored_data.py:106-115`](./Utils/structured_2_scored_data.py#L106-L115)
 - Sector-specific performance comparisons
 - Used for relative scoring and recommendations
 
 ### File Processing Configuration
-**Supported Formats**: PDF, DOCX, DOC, TXT (see `Utils/utils.py:15-37`)
+**Supported Formats**: PDF, DOCX, DOC, TXT (see [`Utils/utils.py:15-37`](./Utils/utils.py#L15-L37))
 **File Size Limits**: Handled by Streamlit default settings
-**OCR Support**: Google Cloud Vision integration available in `tools/tools.py:50-68`
+**OCR Support**: Google Cloud Vision integration available in [`tools/tools.py:50-68`](./tools/tools.py#L50-L68)
 
 ### Streamlit UI Components
-**Main Interface** - See `app.py:5-113`
-- **Upload Phase** (lines 15-33): File uploaders with validation
-- **Analysis Dashboard** (lines 35-89): Results display with interactive elements
-- **Data Editor** (lines 49-55): Real-time parameter modification
-- **Visualizations** (lines 78-89): Trend charts and comparisons
-- **Action Buttons** (lines 92-109): Re-analyze, download, navigation
+**Main Interface** - See [`app.py:5-113`](./app.py#L5-L113)
+- **Upload Phase** ([lines 15-33](./app.py#L15-L33)): File uploaders with validation
+- **Analysis Dashboard** ([lines 35-89](./app.py#L35-L89)): Results display with interactive elements
+- **Data Editor** ([lines 49-55](./app.py#L49-L55)): Real-time parameter modification
+- **Visualizations** ([lines 78-89](./app.py#L78-L89)): Trend charts and comparisons
+- **Action Buttons** ([lines 92-109](./app.py#L92-L109)): Re-analyze, download, navigation
 
-**Session State Management** (lines 8-11): Persistent data across user interactions
+**Session State Management** ([lines 8-11](./app.py#L8-L11)): Persistent data across user interactions
 
 
 ## 🔍 Troubleshooting
