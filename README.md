@@ -377,9 +377,10 @@ SUPPORTED_FORMATS = {
 🚀 GenAI_Hackathon/
 ├── 🖥️ app.py                    # Main Streamlit application
 ├── ⚙️ analyse_pipeline.py       # Core analysis pipeline
-├── 📋 README.md                 # This file
+├── 📋 README.md                 # Main documentation (this file)
+├── 📝 readme.md                 # Secondary readme file
 ├── 📦 requirements.txt          # Python dependencies
-├── 📘 WARP.md                   # Development guide
+├── 🐍 __init__.py               # Python package initialization
 │
 ├── 🔧 Utils/                    # Utility modules
 │   ├── 🛠️ utils.py              # File processing utilities
@@ -389,24 +390,25 @@ SUPPORTED_FORMATS = {
 │
 ├── 🛠️ tools/                    # Processing tools
 │   ├── 🔨 tools.py              # PDF processing tools
-│   └── 💬 prompts.py            # AI prompts and templates
+│   ├── 💬 prompts.py            # AI prompts and templates
+│   └── 🐍 __init__.py           # Package initialization
 │
 ├── 📊 data/                     # Data and benchmarks
 │   ├── 📈 sector_benchmarks.csv # Industry benchmarks
 │   ├── 📋 data_extracted.json   # Sample extracted data
 │   ├── 🔄 data_normalized.json  # Processed data samples
-│   └── 📁 archive/              # Historical data
+│   ├── 📊 data_score.json       # Scored data results
+│   ├── 📝 data_score_sample.json # Sample scoring data
+│   └── 📁 archieve/             # Historical data
+│       └── 📋 startup_parameters.csv
 │
 ├── 📤 input/                    # Sample documents
-│   ├── 📊 startup_pitch_deck.pdf
-│   ├── 📝 transcript.txt
-│   ├── 📧 email.docx
-│   └── 👤 founder_material.docx
-│
-└── 📚 docs/                     # Documentation
-    └── 📐 diagrams/
-        ├── 🏗️ architecture.puml # System architecture
-        └── 📖 README.md         # Documentation guide
+│   ├── 📊 startup_ptch_deck.pdf # Main startup pitch deck
+│   ├── 📈 FinTechX_ AI-Powered SME Lending Revolution.pdf # FinTech example
+│   ├── 📝 transcript.txt        # Call transcript sample
+│   ├── 📝 pitch_deck_draft.txt  # Text-based pitch deck
+│   ├── 📧 email.docx            # Email communication sample
+│   └── 👤 founder_material.docx # Founder background info
 ```
 
 ---
