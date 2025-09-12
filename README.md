@@ -280,17 +280,17 @@ flowchart TD
 
 #### **⚡ Key Execution Points**
 
-| **🎯 Execution Stage** | **🔧 Function Called** | **📁 File Location** | **⏱️ Processing Time** |
-|---------------------|-------------------|------------------|-------------------|
-| **📤 File Upload Validation** | File upload check | [`app.py:26-27`](./app.py#L26-L27) | ~0.1s |
-| **📖 File Content Reading** | [`read_files()`](./Utils/utils.py#L42-L51) | `Utils/utils.py` | ~1-3s |
-| **🔍 Parameter Extraction** | [`content_to_json()`](./Utils/pdf_file_reader.py#L15-L51) | `Utils/pdf_file_reader.py` | ~2-5s |
-| **🎯 Scoring Conversion** | [`convert_raw_to_structured()`](./Utils/structured_2_scored_data.py#L69-L146) | `Utils/structured_2_scored_data.py` | ~0.5s |
-| **📊 Individual Parameter Scoring** | [`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51), [`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24), etc. | `Utils/structured_2_scored_data.py` | ~0.2s |
-| **🧮 Final Score Calculation** | Weighted sum | [`analyse_pipeline.py:38-41`](./analyse_pipeline.py#L38-L41) | ~0.1s |
-| **🚨 Red Flag Detection** | [`detect_red_flags()`](./analyse_pipeline.py#L88-L110) | `analyse_pipeline.py` | ~0.1s |
-| **💡 Recommendation Generation** | [`generate_recommendations()`](./analyse_pipeline.py#L112-L118) | `analyse_pipeline.py` | ~0.1s |
-| **📊 Dashboard Display** | Streamlit rendering | [`app.py:35-89`](./app.py#L35-L89) | ~0.5s |
+| **🎯 Execution Stage** | **🔧 Function Called** | **📁 File Location** |
+|---------------------|-------------------|------------------|
+| **📤 File Upload Validation** | File upload check | [`app.py:26-27`](./app.py#L26-L27) |
+| **📖 File Content Reading** | [`read_files()`](./Utils/utils.py#L42-L51) | `Utils/utils.py` |
+| **🔍 Parameter Extraction** | [`content_to_json()`](./Utils/pdf_file_reader.py#L15-L51) | `Utils/pdf_file_reader.py` |
+| **🎯 Scoring Conversion** | [`convert_raw_to_structured()`](./Utils/structured_2_scored_data.py#L69-L146) | `Utils/structured_2_scored_data.py` |
+| **📊 Individual Parameter Scoring** | [`parse_team()`](./Utils/structured_2_scored_data.py#L44-L51), [`parse_market_size()`](./Utils/structured_2_scored_data.py#L9-L24), etc. | `Utils/structured_2_scored_data.py` |
+| **🧮 Final Score Calculation** | Weighted sum | [`analyse_pipeline.py:38-41`](./analyse_pipeline.py#L38-L41) |
+| **🚨 Red Flag Detection** | [`detect_red_flags()`](./analyse_pipeline.py#L88-L110) | `analyse_pipeline.py` |
+| **💡 Recommendation Generation** | [`generate_recommendations()`](./analyse_pipeline.py#L112-L118) | `analyse_pipeline.py` |
+| **📊 Dashboard Display** | Streamlit rendering | [`app.py:35-89`](./app.py#L35-L89) |
 
 #### **⚠️ Error Handling Points**
 
