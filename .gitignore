@@ -1,0 +1,6 @@
+.myenvw/
+.env
+__pycache__/
+archive/
+readme_pv.md
+agents/.env
