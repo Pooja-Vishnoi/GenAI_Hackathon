@@ -27,9 +27,11 @@ def main():
                 st.error("⚠️ Please upload the Pitch Deck (PDF). It is mandatory.")
             else:
                 st.session_state.show_results = True
+
                 summary_df, results_df, score, flags, recommendations = create_results(uploaded_files)
                 st.session_state.summary_df = summary_df
                 st.session_state.results_df = results_df
+
                 st.rerun()
 
     else:
@@ -68,8 +70,8 @@ def main():
                 st.success("No major red flags detected.")
         with col2:
             st.markdown("### 💡 Recommendations")
-            for r in recommendations:
-                st.info(r)
+            # for r in recommendations:
+            st.info(recommendations)
 
         
         col1, col2 = st.columns([1, 1])

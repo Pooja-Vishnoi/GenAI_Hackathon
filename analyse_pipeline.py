@@ -4,6 +4,17 @@ from Utils.pdf_file_reader import content_to_json
 from Utils.structured_2_scored_data import convert_raw_to_structured
 from Utils.final_score import final_score
 
+import os
+import json
+with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
+    config = json.load(f)
+
+GEMINI_MODEL = config.get("gemini_model", "gemini-2.0-flash")
+TEMPERATURE = config.get("temperature", 0.7)
+MAX_OUTPUT_TOKENS = config.get("max_output_tokens", 500)
+
+from agents.investor_agent import investor_recommendation_agent, investor_recommendation_executor
+
 def create_results(uploaded_files = None):
     df = pd.DataFrame()
     structured_df = pd.DataFrame()
@@ -43,10 +54,11 @@ def create_results(uploaded_files = None):
         print(round(final_score, 2))
 
         # Identify Red Flags
-        flags = detect_red_flags(structured_df)
+        red_flags = detect_red_flags(structured_df)
+        green_flags = detect_green_flags(structured_df)
 
         # Generate recommendations
-        Recommendations = generate_recommendations(structured_df)
+        Recommendations = generate_recommendations(structured_df, red_flags, green_flags)
 
     else: 
         print("not uploaded files")
@@ -76,14 +88,11 @@ def calculate_score(df):
     """Dummy scoring logic"""
     return int(df["Column 1"].sum())
 
-# def detect_red_flags(df):
-#     """Dummy red flag detection"""
-#     flags = []
-#     if (df["Column 2"] > 15).any():
-#         flags.append("Some Column 2 values exceed threshold (15).")
-#     if df["Column 4 (Editable)"].astype(str).str.contains("bad", case=False).any():
-#         flags.append("Negative keyword found in Column 4.")
-#     return flags
+def detect_green_flags(df):
+    """Dummy red flag detection"""
+    flags = []
+    flags = ["Strong founding team", "Large market size"]
+    return flags
 
 def detect_red_flags(df):
     """
@@ -107,15 +116,40 @@ def detect_red_flags(df):
             }
 
     # return flags
-    return ["Team Score is less than threshold.           Refer page No 1 ", "Financial Score is less than benchmark     Refer page no 3"]
+    # red_flags = ["Team Score is less than threshold.           Refer page No 1 ", "Financial Score is less than benchmark     Refer page no 3"]
+    red_flags_points = ["High churn", "Low revenue growth"]
+    red_flags_reference = ["Refer page No 1", "Refer page no 3"]
+    red_flags = [red_flags_points, red_flags_reference]
+    return red_flags
 
-def generate_recommendations(df):
+def generate_recommendations(df, red_flags, green_flags):
     """Dummy recommendations"""
-    recs = []
-    if df["Weighted_Score"].mean() < 5:
-        recs.append("Improve Column 1 values to increase overall performance.")
-    recs.append("Review edits in Columns 4 and 5 for accuracy.")
-    return recs
+
+    print(df)
+
+    # structured_df["Weighted_Score"] = structured_df["Score"] * structured_df["Weightage"]
+    startup_score = (df["Score"] * df["Weightage"]).sum()
+    sector_benchmark_score = (df["Benchmark_normalized"] * df["Weightage"]).sum()
+
+    # startup_score = 72
+    # sector_benchmark_score = 65
+    red_flags = red_flags[0]
+    green_flags = green_flags
+    category_scores = {"financials": df.loc[df['Parameter'] == 'Financials', 'Score'].values[0], "traction": df.loc[df['Parameter'] == 'Traction', 'Score'].values[0]}
+
+    # Run executor to get recommendations
+    recommendations = investor_recommendation_executor(
+        startup_score,
+        sector_benchmark_score,
+        red_flags,
+        green_flags,
+        category_scores,
+        temperature=TEMPERATURE,
+        max_output_tokens=MAX_OUTPUT_TOKENS
+    )
+
+
+    return recommendations
 
 def analyze_results(structured_df):
     """Run all analysis steps on the DataFrame"""
@@ -128,8 +162,9 @@ def analyze_results(structured_df):
     print(round(final_score, 2))
 
     # Identify Red Flags
-    flags = detect_red_flags(structured_df)
+    red_flags = detect_red_flags(structured_df)
+    green_flags = detect_green_flags(structured_df)
 
     # Generate recommendations
-    Recommendations = generate_recommendations(structured_df)
-    return final_score, flags, Recommendations
+    Recommendations = generate_recommendations(structured_df, red_flags, green_flags)
+    return final_score, red_flags, Recommendations
