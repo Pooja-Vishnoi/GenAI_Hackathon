@@ -1,6 +1,8 @@
-AI Startup Analyst
+# AI Startup Analyst
+
 ai_startup_analyst.py is a Python script designed to analyze startup pitch decks and related documents. It extracts text, images, and tables from PDFs, structures startup data into JSON format, evaluates startups based on predefined criteria, calculates a weighted final score, and generates insights using the Gemini API.
-Features
+
+## Features
 
 PDF Processing: Extracts text, image-based text (via OCR), and tabular data from PDFs using PyMuPDF, pytesseract, and pdfplumber.
 Data Structuring: Converts extracted data into structured JSON using the Gemini API.
@@ -9,7 +11,8 @@ Final Score Calculation: Computes a weighted overall score based on parameter sc
 Insight Generation: Identifies red flags, green flags, and provides recommendations.
 Output Storage: Saves extracted data to Excel or CSV files.
 
-Installation
+## Installation
+
 Prerequisites
 Ensure you have Python 3.8+ installed. Install the required packages using:
 pip install pymupdf pytesseract Pillow pandas pdfplumber PyPDF2 google-generativeai python-dotenv
@@ -78,18 +81,20 @@ Final Score: Weighted overall score, e.g.:{
 }
 
 
-Insights: Red flags, green flags, and recommendations.
+## Insights: Red flags, green flags, and recommendations.
 
 Project Structure
+
 project_root/
-├── data/                    # Directory for input PDF files
-├── prompts/                 # Directory for prompt files
+
+├── data/                                     # Directory for input PDF files
+├── prompts/                                   # Directory for prompt files
 │   ├── attribute_extraction_prompt.py
 │   ├── startup_scoring_prompt.py
 │   ├── insight_prompt.py
-├── .env                     # Environment file for API key
-├── ai_startup_analyst.py    # Main script
-├── README.md                # This file
+├── .env                                     # Environment file for API key
+├── ai_startup_analyst.py                    # Main script
+├── README.md                                # This file
 
 Scoring Criteria
 The calculate_final_score function evaluates startups based on nine parameters with the following weights:
