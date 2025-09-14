@@ -5,7 +5,9 @@ import plotly.express as px
 from analyse_pipeline import create_results, recalculate_results, analyze_results
 import time
 
-# Page configuration
+# ============================================================================
+# PAGE CONFIGURATION
+# ============================================================================
 st.set_page_config(
     page_title="GenAI Exchange Hackathon - AI Analyst for Startups", 
     layout="wide",
@@ -13,7 +15,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Google Brand Colors
+# ============================================================================
+# CONSTANTS - Google Brand Colors
+# ============================================================================
 GOOGLE_BLUE = "#4285F4"
 GOOGLE_GREEN = "#34A853"
 GOOGLE_YELLOW = "#FBBC05"
@@ -22,203 +26,273 @@ GOOGLE_GRAY = "#5F6368"
 GOOGLE_LIGHT_GRAY = "#F8F9FA"
 GOOGLE_DARK_GRAY = "#202124"
 
-# Dark Theme CSS
-st.markdown(f"""
-<style>
-    /* Google Dark mode */
-    :root {{
-        --google-blue: {GOOGLE_BLUE};
-        --google-green: {GOOGLE_GREEN};
-        --google-yellow: {GOOGLE_YELLOW};
-        --google-red: {GOOGLE_RED};
-        --bg-primary: {GOOGLE_DARK_GRAY};
-        --bg-secondary: #303134;
-        --bg-card: #3c4043;
-        --text-primary: #e8eaed;
-        --text-secondary: #9aa0a6;
-        --border-color: #5f6368;
-        --shadow: rgba(0, 0, 0, 0.5);
-    }}
-    
-    /* Main app background */
-    .stApp {{
-        background: var(--bg-primary);
-    }}
-    
-    /* Main container */
-    .main {{
-        background: var(--bg-primary);
-    }}
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {{
-        background: #303134;
-    }}
-    
-    /* All text elements */
-    .element-container, .stMarkdown {{
-        color: var(--text-primary);
-    }}
-    
-    /* Metric cards */
-    [data-testid="metric-container"] {{
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px var(--shadow);
-        color: var(--text-primary);
-    }}
-    
-    [data-testid="metric-container"] [data-testid="metric-label"] {{
-        color: var(--text-secondary);
-    }}
-    
-    [data-testid="metric-container"] [data-testid="metric-value"] {{
-        color: var(--text-primary);
-    }}
-    
-    /* Google-style header */
-    .header-title {{
-        font-family: 'Google Sans', 'Product Sans', Arial, sans-serif;
-        font-size: 2.5rem;
-        font-weight: 400;
-        text-align: center;
-        margin-bottom: 2rem;
-        color: var(--text-primary);
-    }}
-    
-    .header-title .g-blue {{ color: {GOOGLE_BLUE}; }}
-    .header-title .g-red {{ color: {GOOGLE_RED}; }}
-    .header-title .g-yellow {{ color: {GOOGLE_YELLOW}; }}
-    .header-title .g-green {{ color: {GOOGLE_GREEN}; }}
-    
-    /* Subheader styling */
-    .subheader {{
-        color: var(--text-primary);
-        font-size: 1.25rem;
-        font-weight: 500;
-        margin: 1.5rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid {GOOGLE_BLUE};
-    }}
-    
-    /* Google-style buttons */
-    .stButton > button {{
-        background: {GOOGLE_BLUE};
-        color: white;
-        border: none;
-        padding: 0.5rem 1.5rem;
-        font-weight: 500;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-        font-family: 'Google Sans', Arial, sans-serif;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }}
-    
-    .stButton > button:hover {{
-        background: #1a73e8;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }}
-    
-    /* File uploader */
-    .stFileUploader {{
-        border: 2px dashed var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-        background: var(--bg-card);
-        transition: all 0.2s ease;
-    }}
-    
-    .stFileUploader label {{
-        color: var(--text-primary) !important;
-    }}
-    
-    .stFileUploader:hover {{
-        border-color: {GOOGLE_BLUE};
-        background: #3c4043;
-    }}
-    
-    /* Tabs Google style */
-    .stTabs [data-baseweb="tab-list"] {{
-        background: transparent;
-        gap: 0;
-        border-bottom: 1px solid var(--border-color);
-    }}
-    
-    .stTabs [data-baseweb="tab"] {{
-        color: var(--text-secondary);
-        border-bottom: 2px solid transparent;
-        background: transparent;
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-    }}
-    
-    .stTabs [aria-selected="true"] {{
-        color: {GOOGLE_BLUE};
-        border-bottom: 2px solid {GOOGLE_BLUE};
-        background: transparent;
-    }}
-    
-    /* Expander */
-    .streamlit-expanderHeader {{
-        background: var(--bg-card);
-        color: var(--text-primary);
-        border-radius: 8px;
-        font-weight: 500;
-    }}
-    
-    /* Data editor */
-    .stDataFrame {{
-        background: var(--bg-card);
-    }}
-    
-    [data-testid="stDataFrame"] {{
-        background: var(--bg-card);
-        color: var(--text-primary);
-    }}
-    
-    /* Success alert */
-    .stSuccess {{
-        background: rgba(52, 168, 83, 0.15);
-        border-left: 4px solid {GOOGLE_GREEN};
-        color: var(--text-primary);
-    }}
-    
-    /* Error alert */
-    .stError {{
-        background: rgba(234, 67, 53, 0.15);
-        border-left: 4px solid {GOOGLE_RED};
-        color: var(--text-primary);
-    }}
-    
-    /* Warning/Info alert */
-    .stWarning, .stInfo {{
-        background: rgba(66, 133, 244, 0.15);
-        border-left: 4px solid {GOOGLE_BLUE};
-        color: var(--text-primary);
-    }}
-    
-    /* Progress bar */
-    .stProgress > div > div > div {{
-        background: {GOOGLE_BLUE};
-    }}
-    
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {{
-        color: var(--text-primary) !important;
-    }}
-    
-    /* Plotly charts dark theme */
-    .js-plotly-plot .plotly {{
-        background: transparent !important;
-    }}
-</style>
-""", unsafe_allow_html=True)
+# ============================================================================
+# CUSTOM CSS STYLING - Dark Theme with Google Colors
+# ============================================================================
+def apply_custom_css():
+    """Apply comprehensive dark theme CSS with Google colors"""
+    st.markdown(f"""
+    <style>
+        /* Google Dark mode variables */
+        :root {{
+            --google-blue: {GOOGLE_BLUE};
+            --google-green: {GOOGLE_GREEN};
+            --google-yellow: {GOOGLE_YELLOW};
+            --google-red: {GOOGLE_RED};
+            --bg-primary: {GOOGLE_DARK_GRAY};
+            --bg-secondary: #303134;
+            --bg-card: #3c4043;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border-color: #5f6368;
+            --shadow: rgba(0, 0, 0, 0.5);
+        }}
+        
+        /* Main app background */
+        .stApp {{
+            background: var(--bg-primary);
+        }}
+        
+        /* Main container */
+        .main {{
+            background: var(--bg-primary);
+        }}
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {{
+            background: #303134;
+        }}
+        
+        /* All text elements */
+        .element-container, .stMarkdown {{
+            color: var(--text-primary);
+        }}
+        
+        /* Metric cards styling */
+        [data-testid="metric-container"] {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--shadow);
+            color: var(--text-primary);
+        }}
+        
+        [data-testid="metric-container"] [data-testid="metric-label"] {{
+            color: var(--text-secondary);
+        }}
+        
+        [data-testid="metric-container"] [data-testid="metric-value"] {{
+            color: var(--text-primary);
+        }}
+        
+        /* Google-style header */
+        .header-title {{
+            font-family: 'Google Sans', 'Product Sans', Arial, sans-serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }}
+        
+        /* Color classes for text */
+        .g-blue {{ color: {GOOGLE_BLUE}; }}
+        .g-red {{ color: {GOOGLE_RED}; }}
+        .g-yellow {{ color: {GOOGLE_YELLOW}; }}
+        .g-green {{ color: {GOOGLE_GREEN}; }}
+        
+        /* Subheader styling */
+        .subheader {{
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin: 1.5rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid {GOOGLE_BLUE};
+        }}
+        
+        /* Google-style buttons */
+        .stButton > button {{
+            background: {GOOGLE_BLUE};
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-family: 'Google Sans', Arial, sans-serif;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }}
+        
+        .stButton > button:hover {{
+            background: #1a73e8;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }}
+        
+        /* File uploader styling */
+        .stFileUploader {{
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            background: var(--bg-card);
+            transition: all 0.2s ease;
+        }}
+        
+        .stFileUploader label {{
+            color: var(--text-primary) !important;
+        }}
+        
+        .stFileUploader:hover {{
+            border-color: {GOOGLE_BLUE};
+            background: #3c4043;
+        }}
+        
+        /* Tabs Google style */
+        .stTabs [data-baseweb="tab-list"] {{
+            background: transparent;
+            gap: 0;
+            border-bottom: 1px solid var(--border-color);
+        }}
+        
+        .stTabs [data-baseweb="tab"] {{
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+        }}
+        
+        .stTabs [aria-selected="true"] {{
+            color: {GOOGLE_BLUE};
+            border-bottom: 2px solid {GOOGLE_BLUE};
+            background: transparent;
+        }}
+        
+        /* Expander styling */
+        .streamlit-expanderHeader {{
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-weight: 500;
+        }}
+        
+        /* Data editor/frame styling */
+        .stDataFrame {{
+            background: var(--bg-card);
+        }}
+        
+        [data-testid="stDataFrame"] {{
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }}
+        
+        /* Success alert */
+        .stSuccess {{
+            background: rgba(52, 168, 83, 0.15);
+            border-left: 4px solid {GOOGLE_GREEN};
+            color: var(--text-primary);
+        }}
+        
+        /* Error alert */
+        .stError {{
+            background: rgba(234, 67, 53, 0.15);
+            border-left: 4px solid {GOOGLE_RED};
+            color: var(--text-primary);
+        }}
+        
+        /* Warning/Info alert */
+        .stWarning, .stInfo {{
+            background: rgba(66, 133, 244, 0.15);
+            border-left: 4px solid {GOOGLE_BLUE};
+            color: var(--text-primary);
+        }}
+        
+        /* Progress bar */
+        .stProgress > div > div > div {{
+            background: {GOOGLE_BLUE};
+        }}
+        
+        /* Headers */
+        h1, h2, h3, h4, h5, h6 {{
+            color: var(--text-primary) !important;
+        }}
+        
+        /* Plotly charts dark theme */
+        .js-plotly-plot .plotly {{
+            background: transparent !important;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# ============================================================================
+# HEADER COMPONENT
+# ============================================================================
+def display_header():
+    """Display the main application header with team name prominence"""
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem; 
+                   background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+                   -webkit-background-clip: text;
+                   -webkit-text-fill-color: transparent;
+                   background-clip: text;
+                   text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+            🚀 AI-Powered Startup Analysis Platform
+        </h1>
+        <h2 style="font-size: 2.5rem; font-weight: 600; margin: 0.5rem 0;
+                   color: #4285f4; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">
+            ✨ Team Gen AI Crew ✨
+        </h2>
+        <p style="font-size: 1rem; color: #9aa0a6; font-style: italic; margin-top: 0.5rem;">
+            <span class="g-blue">Gen</span><span class="g-red">AI</span>
+            <span style="color: var(--text-secondary);"> Exchange</span>
+            <span class="g-yellow"> Hackathon</span> 2024
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ============================================================================
+# FOOTER COMPONENT
+# ============================================================================
+def display_footer():
+    """Display the application footer with team name prominence"""
+    st.markdown("---")
+    st.markdown(f"""
+    <div style='text-align: center; padding: 1rem;'>
+        <p style='font-size: 1.5rem; font-weight: 600; color: {GOOGLE_BLUE}; margin-bottom: 0.5rem;'>
+            🏆 Team Gen AI Crew
+        </p>
+        <small style='color: #9aa0a6;'>
+            Built for <span style='color: {GOOGLE_BLUE};'>Gen</span><span style='color: {GOOGLE_RED};'>AI</span>
+            <span style='color: #9aa0a6;'> Exchange</span>
+            <span style='color: {GOOGLE_YELLOW};'> Hackathon</span> 2024
+        </small>
+        <br>
+        <small style='color: #9aa0a6;'>
+            <a href="https://vision.hack2skill.com/event/genaiexchangehackathon/" target="_blank" style="color: {GOOGLE_BLUE}; text-decoration: none;">
+                hack2skill.com/genaiexchangehackathon
+            </a>
+        </small>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ============================================================================
+# CHART CREATION FUNCTIONS
+# ============================================================================
 
 def create_gauge_chart(value, title, max_value=100):
-    """Create a Google-styled gauge chart for dark theme"""
+    """
+    Create a Google-styled gauge chart for dark theme
     
+    Args:
+        value: Current score value
+        title: Chart title  
+        max_value: Maximum possible value (default 100)
+    
+    Returns:
+        Plotly figure object
+    """
     fig = go.Figure(go.Indicator(
         mode = "gauge+number+delta",
         value = value,
@@ -233,9 +307,9 @@ def create_gauge_chart(value, title, max_value=100):
             'borderwidth': 2,
             'bordercolor': "#5f6368",
             'steps': [
-                {'range': [0, max_value * 0.5], 'color': 'rgba(234, 67, 53, 0.3)'},
-                {'range': [max_value * 0.5, max_value * 0.75], 'color': 'rgba(251, 188, 5, 0.3)'},
-                {'range': [max_value * 0.75, max_value], 'color': 'rgba(52, 168, 83, 0.3)'}
+                {'range': [0, max_value * 0.5], 'color': 'rgba(234, 67, 53, 0.3)'},  # Red zone
+                {'range': [max_value * 0.5, max_value * 0.75], 'color': 'rgba(251, 188, 5, 0.3)'},  # Yellow zone
+                {'range': [max_value * 0.75, max_value], 'color': 'rgba(52, 168, 83, 0.3)'}  # Green zone
             ],
             'threshold': {
                 'line': {'color': GOOGLE_GREEN, 'width': 4},
@@ -244,6 +318,7 @@ def create_gauge_chart(value, title, max_value=100):
             }
         }
     ))
+    
     fig.update_layout(
         height=250,
         margin=dict(l=10, r=10, t=40, b=10),
@@ -253,13 +328,19 @@ def create_gauge_chart(value, title, max_value=100):
     return fig
 
 def create_comparison_chart(df):
-    """Create a Google-styled comparison chart for dark theme"""
+    """
+    Create a Google-styled comparison chart for dark theme
     
+    Args:
+        df: DataFrame with Score, Threshold, and Benchmark columns
+    
+    Returns:
+        Plotly figure object
+    """
     fig = go.Figure()
     
     # Check if DataFrame is empty or missing required columns
     if df.empty or 'Score' not in df.columns:
-        # Return empty figure with message
         fig.add_annotation(
             text="No data available for visualization",
             xref="paper", yref="paper",
@@ -339,15 +420,24 @@ def create_comparison_chart(df):
     return fig
 
 def create_radar_chart(df):
-    """Create a Google-styled radar chart for dark theme"""
+    """
+    Create a Google-styled radar chart for multi-parameter analysis
     
+    Args:
+        df: DataFrame with Parameter, Score, and Threshold columns
+    
+    Returns:
+        Plotly figure object or None if data insufficient
+    """
     if 'Parameter' in df.columns:
+        # Take top 8 parameters for radar chart
         parameters = df['Parameter'].tolist()[:8]
         scores = df['Score'].tolist()[:8]
         thresholds = df['Threshold'].tolist()[:8]
         
         fig = go.Figure()
         
+        # Add actual scores trace
         fig.add_trace(go.Scatterpolar(
             r=scores,
             theta=parameters,
@@ -358,6 +448,7 @@ def create_radar_chart(df):
             marker=dict(color=GOOGLE_BLUE)
         ))
         
+        # Add threshold trace
         fig.add_trace(go.Scatterpolar(
             r=thresholds,
             theta=parameters,
@@ -398,7 +489,15 @@ def create_radar_chart(df):
     return None
 
 def create_heatmap(df):
-    """Create a Google-styled heatmap for dark theme"""
+    """
+    Create a Google-styled correlation heatmap
+    
+    Args:
+        df: DataFrame with numeric columns for correlation
+    
+    Returns:
+        Plotly figure object or None if insufficient data
+    """
     numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
     
     if len(numeric_cols) > 1:
@@ -406,11 +505,11 @@ def create_heatmap(df):
         
         # Dark theme colorscale
         colorscale = [
-            [0, '#8B1A1A'],  # Dark red
-            [0.25, '#8B6914'],  # Dark yellow
-            [0.5, '#5F6368'],  # Gray
-            [0.75, '#2E7D32'],  # Dark green
-            [1, GOOGLE_GREEN]
+            [0, '#8B1A1A'],      # Dark red
+            [0.25, '#8B6914'],   # Dark yellow
+            [0.5, '#5F6368'],    # Gray
+            [0.75, '#2E7D32'],   # Dark green
+            [1, GOOGLE_GREEN]    # Bright green
         ]
         
         fig = px.imshow(
@@ -433,85 +532,192 @@ def create_heatmap(df):
         return fig
     return None
 
+# ============================================================================
+# FILE UPLOAD SECTION
+# ============================================================================
+def handle_file_uploads():
+    """
+    Handle document uploads and display upload interface
+    
+    Returns:
+        tuple: (pitch_deck, uploaded_files_list)
+    """
+    st.markdown('<div class="subheader">📁 Document Upload</div>', unsafe_allow_html=True)
+    
+    # Create two columns for upload interface
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        with st.container():
+            st.markdown("##### 📎 Required Documents")
+            pitch_deck = st.file_uploader(
+                "Pitch Deck (PDF)",
+                type=["pdf"],
+                key="pitch_deck",
+                help="Upload your startup's pitch deck in PDF format"
+            )
+            if pitch_deck:
+                st.success(f"✅ {pitch_deck.name} uploaded")
+    
+    with col2:
+        with st.container():
+            st.markdown("##### 📄 Optional Documents")
+            call_transcript = st.file_uploader(
+                "Call Transcript",
+                type=["doc", "docx", "txt"],
+                key="call_transcript"
+            )
+            email_copy = st.file_uploader(
+                "Email Copy",
+                type=["doc", "docx", "txt"],
+                key="email_copy"
+            )
+            founders_doc = st.file_uploader(
+                "Founders Document",
+                type=["doc", "docx", "txt"],
+                key="founders_doc"
+            )
+    
+    # Collect all uploaded files
+    uploaded_files = [f for f in [pitch_deck, call_transcript, email_copy, founders_doc] if f is not None]
+    
+    return pitch_deck, uploaded_files
+
+# ============================================================================
+# METRICS DISPLAY SECTION
+# ============================================================================
+def display_metrics(score, flags, recommendations):
+    """
+    Display key metrics in executive summary
+    
+    Args:
+        score: Overall analysis score
+        flags: List of red flags
+        recommendations: AI recommendations (string or list)
+    """
+    st.markdown('<div class="subheader">📊 Executive Summary</div>', unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Overall Score",
+            f"{score:.1f}",
+            delta=f"{score - 70:.1f} vs benchmark",
+            delta_color="normal"
+        )
+    
+    with col2:
+        # Determine risk level based on score
+        risk_level = "Medium" if 50 < score < 75 else ("Low" if score >= 75 else "High")
+        st.metric(
+            "Risk Level",
+            risk_level,
+            delta=None
+        )
+    
+    with col3:
+        st.metric(
+            "Red Flags",
+            len(flags),
+            delta=None,
+            delta_color="inverse"
+        )
+    
+    with col4:
+        # Count recommendations properly
+        if isinstance(recommendations, str):
+            rec_count = 1 if recommendations.strip() else 0
+        elif isinstance(recommendations, list):
+            rec_count = len([r for r in recommendations if r and len(str(r)) > 5])
+        else:
+            rec_count = 0
+        
+        st.metric(
+            "Recommendations",
+            rec_count if rec_count > 0 else "Generated",
+            delta=None
+        )
+
+# ============================================================================
+# INSIGHTS DISPLAY SECTION
+# ============================================================================
+def display_insights(flags, recommendations):
+    """
+    Display risk assessment and recommendations
+    
+    Args:
+        flags: List of red flags
+        recommendations: AI recommendations
+    """
+    st.markdown('<div class="subheader">🔍 Analysis Insights</div>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("#### 🚨 Risk Assessment")
+        if flags:
+            for i, flag in enumerate(flags):
+                with st.expander(f"⚠️ Issue {i+1}", expanded=True):
+                    st.markdown(f"**{flag}**")
+                    st.markdown(f"<span style='color: {GOOGLE_RED};'>Impact: High</span>", unsafe_allow_html=True)
+                    st.markdown("Priority: Critical")
+        else:
+            st.success("✅ No critical risks detected")
+    
+    with col2:
+        st.markdown("#### 💡 Recommendations")
+        
+        # Display recommendations as in original
+        if recommendations:
+            st.info(recommendations)
+            
+            # Add implementation details
+            col_impl1, col_impl2 = st.columns(2)
+            with col_impl1:
+                st.markdown(f"<span style='color: {GOOGLE_BLUE};'>📅 Implementation: Medium-term</span>", unsafe_allow_html=True)
+            with col_impl2:
+                st.markdown(f"<span style='color: {GOOGLE_GREEN};'>📈 Expected Impact: Positive</span>", unsafe_allow_html=True)
+        else:
+            st.info("📝 Upload and analyze documents to get AI-powered investment recommendations")
+
+# ============================================================================
+# MAIN APPLICATION
+# ============================================================================
 def main():
-    # Initialize session state
+    """Main application function - orchestrates the entire app flow"""
+    
+    # Apply custom CSS styling
+    apply_custom_css()
+    
+    # ========================================================================
+    # INITIALIZE SESSION STATE
+    # ========================================================================
     if "show_results" not in st.session_state:
         st.session_state.show_results = False
+    
     if "results_df" not in st.session_state:
         # create_results returns tuple: (df, structured_df, score, flags, recommendations)
-        # We need the structured_df (second element) for results_df
         result_tuple = create_results()
         if isinstance(result_tuple, tuple) and len(result_tuple) >= 2:
             st.session_state.results_df = result_tuple[1]  # structured_df is at index 1
         else:
             st.session_state.results_df = pd.DataFrame()
+    
     if "analysis_progress" not in st.session_state:
         st.session_state.analysis_progress = 0
-
-    # GenAI Exchange Hackathon header with Google colors
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem; 
-                   background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
-                   -webkit-background-clip: text;
-                   -webkit-text-fill-color: transparent;
-                   background-clip: text;
-                   text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
-            🚀 AI-Powered Startup Analysis Platform
-        </h1>
-        <h2 style="font-size: 2.5rem; font-weight: 600; margin: 0.5rem 0;
-                   color: #4285f4; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">
-            ✨ Team Gen AI Crew ✨
-        </h2>
-        <p style="font-size: 1rem; color: #9aa0a6; font-style: italic; margin-top: 0.5rem;">
-            <span class="g-blue">Gen</span><span class="g-red">AI</span>
-            <span style="color: var(--text-secondary);"> Exchange</span>
-            <span class="g-yellow"> Hackathon</span> 2024
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
     
+    # Display header
+    display_header()
+    
+    # ========================================================================
+    # UPLOAD SECTION (Show when no results)
+    # ========================================================================
     if not st.session_state.show_results:
-        # Upload Section with Google styling
-        st.markdown('<div class="subheader">📁 Document Upload</div>', unsafe_allow_html=True)
+        # Handle file uploads
+        pitch_deck, uploaded_files = handle_file_uploads()
         
-        # Google Material Design inspired cards
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            with st.container():
-                st.markdown("##### 📎 Required Documents")
-                pitch_deck = st.file_uploader(
-                    "Pitch Deck (PDF)",
-                    type=["pdf"],
-                    key="pitch_deck",
-                    help="Upload your startup's pitch deck in PDF format"
-                )
-                if pitch_deck:
-                    st.success(f"✅ {pitch_deck.name} uploaded")
-        
-        with col2:
-            with st.container():
-                st.markdown("##### 📄 Optional Documents")
-                call_transcript = st.file_uploader(
-                    "Call Transcript",
-                    type=["doc", "docx", "txt"],
-                    key="call_transcript"
-                )
-                email_copy = st.file_uploader(
-                    "Email Copy",
-                    type=["doc", "docx", "txt"],
-                    key="email_copy"
-                )
-                founders_doc = st.file_uploader(
-                    "Founders Document",
-                    type=["doc", "docx", "txt"],
-                    key="founders_doc"
-                )
-
-        uploaded_files = [f for f in [pitch_deck, call_transcript, email_copy, founders_doc] if f is not None]
-        
-        # Upload summary
+        # Upload summary and analyze button
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         
@@ -536,18 +742,18 @@ def main():
                         st.success("✅ Analysis complete!")
                         time.sleep(1)
                         st.rerun()
-
+    
+    # ========================================================================
+    # RESULTS SECTION (Show after analysis)
+    # ========================================================================
     else:
-        # Results Section with Google Material Design
-        # Make sure results_df is a DataFrame, not a tuple
+        # Ensure results_df is a DataFrame
         if isinstance(st.session_state.results_df, tuple):
-            # If it's still a tuple, extract the structured_df (second element)
             if len(st.session_state.results_df) >= 2:
                 st.session_state.results_df = st.session_state.results_df[1]
             else:
                 st.session_state.results_df = pd.DataFrame()
         
-        # Ensure it's a DataFrame before analysis
         if not isinstance(st.session_state.results_df, pd.DataFrame):
             st.session_state.results_df = pd.DataFrame()
         
@@ -555,56 +761,12 @@ def main():
         if not st.session_state.results_df.empty:
             score, flags, recommendations = analyze_results(st.session_state.results_df)
         else:
-            # Default values when no data
             score = 0
             flags = []
             recommendations = ["Upload files to get AI-powered investment recommendations"]
         
-        # Top metrics row with Google colors
-        st.markdown('<div class="subheader">📊 Executive Summary</div>', unsafe_allow_html=True)
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                "Overall Score",
-                f"{score:.1f}",
-                delta=f"{score - 70:.1f} vs benchmark",
-                delta_color="normal"
-            )
-        
-        with col2:
-            risk_level = "Medium" if 50 < score < 75 else ("Low" if score >= 75 else "High")
-            st.metric(
-                "Risk Level",
-                risk_level,
-                delta=None
-            )
-        
-        with col3:
-            st.metric(
-                "Red Flags",
-                len(flags),
-                delta=None,
-                delta_color="inverse"
-            )
-        
-        with col4:
-            # Count recommendations properly
-            if isinstance(recommendations, str):
-                # It's one comprehensive recommendation
-                rec_count = 1 if recommendations.strip() else 0
-            elif isinstance(recommendations, list):
-                # Count actual recommendations, not characters
-                rec_count = len([r for r in recommendations if r and len(str(r)) > 5])
-            else:
-                rec_count = 0
-            
-            st.metric(
-                "Recommendations",
-                rec_count if rec_count > 0 else "Generated",
-                delta=None
-            )
+        # Display top metrics
+        display_metrics(score, flags, recommendations)
         
         # Main content area
         st.markdown("---")
@@ -624,7 +786,7 @@ def main():
                 )
         
         with col2:
-            # Google-style tabs
+            # ALL CHARTS IN TABS - KEEPING ALL 4 TABS
             tab1, tab2, tab3, tab4 = st.tabs(["📈 Trends", "🎯 Radar", "🔥 Heatmap", "📊 Data"])
             
             with tab1:
@@ -656,42 +818,11 @@ def main():
                 )
                 st.session_state.results_df = edited_df
         
-        # Insights Section with Google colors
+        # Insights Section
         st.markdown("---")
-        st.markdown('<div class="subheader">🔍 Analysis Insights</div>', unsafe_allow_html=True)
+        display_insights(flags, recommendations)
         
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            st.markdown("#### 🚨 Risk Assessment")
-            if flags:
-                for i, flag in enumerate(flags):
-                    with st.expander(f"⚠️ Issue {i+1}", expanded=True):
-                        st.markdown(f"**{flag}**")
-                        st.markdown(f"<span style='color: {GOOGLE_RED};'>Impact: High</span>", unsafe_allow_html=True)
-                        st.markdown("Priority: Critical")
-            else:
-                st.success("✅ No critical risks detected")
-        
-        with col2:
-            st.markdown("#### 💡 Recommendations")
-            
-            # Display recommendations in a simple info box like the original code
-            # This ensures the full AI-generated text is shown as one block
-            if recommendations:
-                # Use Streamlit's info component for clean display
-                st.info(recommendations)
-                
-                # Add implementation details below
-                col_impl1, col_impl2 = st.columns(2)
-                with col_impl1:
-                    st.markdown(f"<span style='color: {GOOGLE_BLUE};'>📅 Implementation: Medium-term</span>", unsafe_allow_html=True)
-                with col_impl2:
-                    st.markdown(f"<span style='color: {GOOGLE_GREEN};'>📈 Expected Impact: Positive</span>", unsafe_allow_html=True)
-            else:
-                st.info("📝 Upload and analyze documents to get AI-powered investment recommendations")
-        
-        # Performance Breakdown
+        # Performance Breakdown Expander
         with st.expander("📊 Detailed Performance Analysis", expanded=False):
             if 'Weighted_Score' in st.session_state.results_df.columns:
                 # Use Google colors for bar chart
@@ -723,7 +854,7 @@ def main():
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
         
-        # Action Buttons with Google styling
+        # Action Buttons
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         
@@ -757,27 +888,12 @@ def main():
                 st.session_state.show_results = False
                 st.session_state.results_df = pd.DataFrame()
                 st.rerun()
-        
-        # GenAI Exchange Hackathon footer
-        st.markdown("---")
-        st.markdown(f"""
-        <div style='text-align: center; padding: 1rem;'>
-            <p style='font-size: 1.5rem; font-weight: 600; color: {GOOGLE_BLUE}; margin-bottom: 0.5rem;'>
-                🏆 Team Gen AI Crew
-            </p>
-            <small style='color: #9aa0a6;'>
-                Built for <span style='color: {GOOGLE_BLUE};'>Gen</span><span style='color: {GOOGLE_RED};'>AI</span>
-                <span style='color: #9aa0a6;'> Exchange</span>
-                <span style='color: {GOOGLE_YELLOW};'> Hackathon</span> 2024
-            </small>
-            <br>
-            <small style='color: #9aa0a6;'>
-                <a href="https://vision.hack2skill.com/event/genaiexchangehackathon/" target="_blank" style="color: {GOOGLE_BLUE}; text-decoration: none;">
-                    hack2skill.com/genaiexchangehackathon
-                </a>
-            </small>
-        </div>
-        """, unsafe_allow_html=True)
+    
+    # Display footer
+    display_footer()
 
+# ============================================================================
+# RUN APPLICATION
+# ============================================================================
 if __name__ == "__main__":
     main()
