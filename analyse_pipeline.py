@@ -127,12 +127,9 @@ def generate_recommendations(df, red_flags, green_flags):
 
     print(df)
 
-    # structured_df["Weighted_Score"] = structured_df["Score"] * structured_df["Weightage"]
     startup_score = (df["Score"] * df["Weightage"]).sum()
     sector_benchmark_score = (df["Benchmark_normalized"] * df["Weightage"]).sum()
 
-    # startup_score = 72
-    # sector_benchmark_score = 65
     red_flags = red_flags[0]
     green_flags = green_flags
     category_scores = {"financials": df.loc[df['Parameter'] == 'Financials', 'Score'].values[0], "traction": df.loc[df['Parameter'] == 'Traction', 'Score'].values[0]}
