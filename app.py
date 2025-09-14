@@ -257,27 +257,46 @@ def create_comparison_chart(df):
     
     fig = go.Figure()
     
+    # Check if DataFrame is empty or missing required columns
+    if df.empty or 'Score' not in df.columns:
+        # Return empty figure with message
+        fig.add_annotation(
+            text="No data available for visualization",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#999")
+        )
+        fig.update_layout(
+            template="plotly_dark",
+            showlegend=False,
+            height=400
+        )
+        return fig
+    
     # Add Score line with Google Blue
-    fig.add_trace(go.Scatter(
-        x=df.index,
-        y=df['Score'],
-        mode='lines+markers',
-        name='Score',
-        line=dict(color=GOOGLE_BLUE, width=3),
-        marker=dict(size=8, symbol='circle', color=GOOGLE_BLUE),
-        hovertemplate='<b>Score: %{y:.1f}</b><extra></extra>'
-    ))
+    if 'Score' in df.columns:
+        fig.add_trace(go.Scatter(
+            x=df.index,
+            y=df['Score'],
+            mode='lines+markers',
+            name='Score',
+            line=dict(color=GOOGLE_BLUE, width=3),
+            marker=dict(size=8, symbol='circle', color=GOOGLE_BLUE),
+            hovertemplate='<b>Score: %{y:.1f}</b><extra></extra>'
+        ))
     
     # Add Threshold line with Google Red
-    fig.add_trace(go.Scatter(
-        x=df.index,
-        y=df['Threshold'],
-        mode='lines+markers',
-        name='Threshold',
-        line=dict(color=GOOGLE_RED, width=2, dash='dash'),
-        marker=dict(size=6, symbol='square', color=GOOGLE_RED),
-        hovertemplate='<b>Threshold: %{y:.1f}</b><extra></extra>'
-    ))
+    if 'Threshold' in df.columns:
+        fig.add_trace(go.Scatter(
+            x=df.index,
+            y=df['Threshold'],
+            mode='lines+markers',
+            name='Threshold',
+            line=dict(color=GOOGLE_RED, width=2, dash='dash'),
+            marker=dict(size=6, symbol='square', color=GOOGLE_RED),
+            hovertemplate='<b>Threshold: %{y:.1f}</b><extra></extra>'
+        ))
     
     # Add Benchmark line with Google Green
     if 'Benchmark_normalized' in df.columns:
@@ -419,20 +438,37 @@ def main():
     if "show_results" not in st.session_state:
         st.session_state.show_results = False
     if "results_df" not in st.session_state:
-        st.session_state.results_df = create_results()
+        # create_results returns tuple: (df, structured_df, score, flags, recommendations)
+        # We need the structured_df (second element) for results_df
+        result_tuple = create_results()
+        if isinstance(result_tuple, tuple) and len(result_tuple) >= 2:
+            st.session_state.results_df = result_tuple[1]  # structured_df is at index 1
+        else:
+            st.session_state.results_df = pd.DataFrame()
     if "analysis_progress" not in st.session_state:
         st.session_state.analysis_progress = 0
 
     # GenAI Exchange Hackathon header with Google colors
     st.markdown("""
-    <h1 class="header-title">
-        <span class="g-blue">Gen</span><span class="g-red">AI</span>
-        <span style="color: var(--text-primary);"> Exchange</span>
-        <span class="g-yellow"> Hackathon</span>
-    </h1>
-    <p style="text-align: center; color: var(--text-secondary); margin-top: -1rem; font-family: 'Google Sans', Arial;">
-        🚀 AI-Powered Startup Analysis Platform by <span class="g-green">Team Gen AI Crew</span>
-    </p>
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem; 
+                   background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+                   -webkit-background-clip: text;
+                   -webkit-text-fill-color: transparent;
+                   background-clip: text;
+                   text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+            🚀 AI-Powered Startup Analysis Platform
+        </h1>
+        <h2 style="font-size: 2.5rem; font-weight: 600; margin: 0.5rem 0;
+                   color: #4285f4; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">
+            ✨ Team Gen AI Crew ✨
+        </h2>
+        <p style="font-size: 1rem; color: #9aa0a6; font-style: italic; margin-top: 0.5rem;">
+            <span class="g-blue">Gen</span><span class="g-red">AI</span>
+            <span style="color: var(--text-secondary);"> Exchange</span>
+            <span class="g-yellow"> Hackathon</span> 2024
+        </p>
+    </div>
     """, unsafe_allow_html=True)
     
     if not st.session_state.show_results:
@@ -503,7 +539,26 @@ def main():
 
     else:
         # Results Section with Google Material Design
-        score, flags, recommendations = analyze_results(st.session_state.results_df)
+        # Make sure results_df is a DataFrame, not a tuple
+        if isinstance(st.session_state.results_df, tuple):
+            # If it's still a tuple, extract the structured_df (second element)
+            if len(st.session_state.results_df) >= 2:
+                st.session_state.results_df = st.session_state.results_df[1]
+            else:
+                st.session_state.results_df = pd.DataFrame()
+        
+        # Ensure it's a DataFrame before analysis
+        if not isinstance(st.session_state.results_df, pd.DataFrame):
+            st.session_state.results_df = pd.DataFrame()
+        
+        # Analyze results if DataFrame is not empty
+        if not st.session_state.results_df.empty:
+            score, flags, recommendations = analyze_results(st.session_state.results_df)
+        else:
+            # Default values when no data
+            score = 0
+            flags = []
+            recommendations = ["Upload files to get AI-powered investment recommendations"]
         
         # Top metrics row with Google colors
         st.markdown('<div class="subheader">📊 Executive Summary</div>', unsafe_allow_html=True)
@@ -535,9 +590,19 @@ def main():
             )
         
         with col4:
+            # Count recommendations properly
+            if isinstance(recommendations, str):
+                # It's one comprehensive recommendation
+                rec_count = 1 if recommendations.strip() else 0
+            elif isinstance(recommendations, list):
+                # Count actual recommendations, not characters
+                rec_count = len([r for r in recommendations if r and len(str(r)) > 5])
+            else:
+                rec_count = 0
+            
             st.metric(
                 "Recommendations",
-                len(recommendations),
+                rec_count if rec_count > 0 else "Generated",
                 delta=None
             )
         
@@ -610,11 +675,21 @@ def main():
         
         with col2:
             st.markdown("#### 💡 Recommendations")
-            for i, rec in enumerate(recommendations, 1):
-                with st.expander(f"💡 Recommendation {i}", expanded=True):
-                    st.markdown(f"**{rec}**")
-                    st.markdown(f"<span style='color: {GOOGLE_BLUE};'>Implementation: Medium-term</span>", unsafe_allow_html=True)
-                    st.markdown(f"<span style='color: {GOOGLE_GREEN};'>Expected Impact: Positive</span>", unsafe_allow_html=True)
+            
+            # Display recommendations in a simple info box like the original code
+            # This ensures the full AI-generated text is shown as one block
+            if recommendations:
+                # Use Streamlit's info component for clean display
+                st.info(recommendations)
+                
+                # Add implementation details below
+                col_impl1, col_impl2 = st.columns(2)
+                with col_impl1:
+                    st.markdown(f"<span style='color: {GOOGLE_BLUE};'>📅 Implementation: Medium-term</span>", unsafe_allow_html=True)
+                with col_impl2:
+                    st.markdown(f"<span style='color: {GOOGLE_GREEN};'>📈 Expected Impact: Positive</span>", unsafe_allow_html=True)
+            else:
+                st.info("📝 Upload and analyze documents to get AI-powered investment recommendations")
         
         # Performance Breakdown
         with st.expander("📊 Detailed Performance Analysis", expanded=False):
@@ -687,12 +762,14 @@ def main():
         st.markdown("---")
         st.markdown(f"""
         <div style='text-align: center; padding: 1rem;'>
-            <span style='color: {GOOGLE_BLUE}; font-weight: bold; font-size: 1.2rem;'>Gen</span>
-            <span style='color: {GOOGLE_RED}; font-weight: bold; font-size: 1.2rem;'>AI</span>
-            <span style='color: #9aa0a6; font-weight: bold; font-size: 1.2rem;'> Exchange</span>
-            <span style='color: {GOOGLE_YELLOW}; font-weight: bold; font-size: 1.2rem;'> Hackathon</span>
-            <br>
-            <small style='color: #9aa0a6;'>🏆 Built for GenAI Exchange Hackathon 2024 | Team Gen AI Crew</small>
+            <p style='font-size: 1.5rem; font-weight: 600; color: {GOOGLE_BLUE}; margin-bottom: 0.5rem;'>
+                🏆 Team Gen AI Crew
+            </p>
+            <small style='color: #9aa0a6;'>
+                Built for <span style='color: {GOOGLE_BLUE};'>Gen</span><span style='color: {GOOGLE_RED};'>AI</span>
+                <span style='color: #9aa0a6;'> Exchange</span>
+                <span style='color: {GOOGLE_YELLOW};'> Hackathon</span> 2024
+            </small>
             <br>
             <small style='color: #9aa0a6;'>
                 <a href="https://vision.hack2skill.com/event/genaiexchangehackathon/" target="_blank" style="color: {GOOGLE_BLUE}; text-decoration: none;">
