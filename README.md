@@ -3,6 +3,7 @@
 ## 📋 Table of Contents
 - [🎯 Overview](#overview)
 - [✨ Features](#features)
+- [🎨 UI/UX Documentation](#ui-ux-documentation)
 - [🏗️ Architecture](#architecture)
 - [🚀 Installation](#installation)
 - [📖 Usage](#usage)
@@ -51,6 +52,19 @@
 - 🔮 **Smart Extraction**: AI-powered parameter extraction from documents 🚧 **[PLANNED]**
 - 💡 **Recommendation Engine**: Contextual investment recommendations ✅ **[IMPLEMENTED]**
 - ⚠️ **Risk Assessment**: Intelligent risk factor identification ✅ **[IMPLEMENTED]**
+
+---
+
+## 🎨 UI/UX Documentation
+
+For detailed user interface and experience documentation, including:
+- 📱 **Component Structure**: Detailed breakdown of all UI components
+- 🎯 **User Journey Maps**: Complete user interaction flows
+- 🖼️ **Visual Design Guidelines**: Color schemes, typography, and layouts
+- 📊 **Dashboard Components**: Interactive elements and data visualizations
+- 🔄 **State Management**: Session handling and real-time updates
+
+📖 **See the complete [UI-UX Documentation](./UI-UX.md)**
 
 ---
 
