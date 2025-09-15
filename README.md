@@ -56,61 +56,165 @@
 
 ## 🏗️ Architecture
 
+### 🎯 **Frontend-Backend Separation**
+
+The application follows a clear **Frontend-Backend architecture**:
+
+- **🖥️ Frontend (`app.py`)**: Streamlit-based UI that handles user interactions, file uploads, and data visualization
+- **⚙️ Backend (`analyse_pipeline.py`)**: Core processing engine that performs analysis, scoring, and recommendation generation
+
+```mermaid
+graph TB
+    subgraph FRONTEND["🖥️ FRONTEND - app.py"]
+        UI[Streamlit UI]
+        FU[File Upload Interface]
+        DE[Data Editor]
+        VIZ[Visualizations]
+        BTN[Action Buttons]
+    end
+    
+    subgraph BACKEND["⚙️ BACKEND - analyse_pipeline.py"]
+        CR[create_results]
+        AR[analyze_results]
+        DF[detect_red_flags]
+        GR[generate_recommendations]
+    end
+    
+    UI --> FU
+    FU -->|Uploaded Files| CR
+    CR -->|Results DataFrame| DE
+    DE -->|Modified Data| AR
+    AR -->|Updated Scores| VIZ
+    BTN -->|Re-analyze| AR
+    
+    style UI fill:#4285f4,color:#fff
+    style CR fill:#34a853,color:#fff
+```
+
+### 🔄 **Complete Application Flow**
+
+```mermaid
+flowchart TD
+    subgraph FRONTEND["🖥️ FRONTEND (app.py)"]
+        START([User Opens App]) --> UPLOAD[File Upload UI]
+        UPLOAD --> VALIDATE{Files Valid?}
+        VALIDATE -->|No| ERROR[Show Error]
+        VALIDATE -->|Yes| ANALYZE_BTN[Click Analyze Button]
+        
+        RESULTS_UI[Display Results Dashboard]
+        EDIT_UI[Data Editor Interface]
+        REANALYZE_BTN[Re-analyze Button]
+    end
+    
+    subgraph BACKEND["⚙️ BACKEND (analyse_pipeline.py)"]
+        CREATE_RESULTS[create_results]
+        ANALYZE_RESULTS[analyze_results]
+        
+        subgraph UTILS["📚 Utils Functions"]
+            READ_FILES[read_files]
+            CONTENT_JSON[content_to_json]
+            CONVERT_STRUCT[convert_raw_to_structured]
+        end
+        
+        subgraph ANALYSIS["🧠 Analysis Functions"]
+            DETECT_RED[detect_red_flags]
+            DETECT_GREEN[detect_green_flags]
+            GEN_REC[generate_recommendations]
+        end
+    end
+    
+    ANALYZE_BTN -->|Call| CREATE_RESULTS
+    CREATE_RESULTS --> READ_FILES
+    READ_FILES --> CONTENT_JSON
+    CONTENT_JSON --> CONVERT_STRUCT
+    CONVERT_STRUCT --> DETECT_RED
+    CONVERT_STRUCT --> DETECT_GREEN
+    DETECT_RED --> GEN_REC
+    DETECT_GREEN --> GEN_REC
+    
+    CREATE_RESULTS -->|Return Results| RESULTS_UI
+    RESULTS_UI --> EDIT_UI
+    EDIT_UI --> REANALYZE_BTN
+    REANALYZE_BTN -->|Call| ANALYZE_RESULTS
+    ANALYZE_RESULTS -->|Update| RESULTS_UI
+    
+    style UPLOAD fill:#4285f4,color:#fff
+    style CREATE_RESULTS fill:#34a853,color:#fff
+    style ANALYZE_RESULTS fill:#fbbc05,color:#000
+```
+
 ### 🏛️ **High-Level System Overview**
 ```mermaid
 graph LR
-    A[📄 Documents] --> B[⚙️ Processing Pipeline]
-    B --> C[🧠 Analysis Engine]
-    C --> D[📊 Interactive Dashboard]
+    A[📄 Documents] --> B[🖥️ Frontend<br/>app.py]
+    B --> C[⚙️ Backend<br/>analyse_pipeline.py]
+    C --> D[🧠 Analysis Engine]
+    D --> B
+    B --> E[📊 Interactive Dashboard]
 ```
+
+### 📋 **Key Function Calls Between Frontend & Backend**
+
+| **Frontend Action (app.py)** | **Backend Function Called** | **Purpose** | **Returns** |
+|------------------------------|----------------------------|------------|-------------|
+| **User clicks "🔍 Analyze"** | `create_results(uploaded_files)` | Initial document analysis | summary_df, results_df, score, flags, recommendations |
+| **User edits data in UI** | `analyze_results(structured_df)` | Re-calculate scores | final_score, flags, recommendations |
+| **User clicks "🔄 Re-analyze"** | `analyze_results(structured_df)` | Refresh analysis | final_score, flags, recommendations |
+| **Dashboard loads** | Uses returned DataFrames | Display results | N/A - uses stored session state |
 
 ### 🔧 **Detailed Architecture Layers**
 
-#### **🎨 Layer 1: User Interface**
+#### **🎨 Layer 1: Frontend User Interface (`app.py`)**
 ```mermaid
 graph TB
-    UI[🖥️ Streamlit Web App]
-    UP[📤 File Upload]
-    DA[📊 Dashboard]
+    UI[Streamlit Web App - app.py]
+    UP[File Upload - Lines 538-584]
+    DA[Dashboard Display - Lines 749-823]
+    ME[Metrics Display - Lines 589-640]
+    IN[Insights Display - Lines 645-682]
     
     UI --> UP
     UI --> DA
+    UI --> ME
+    UI --> IN
 ```
 
-#### **⚙️ Layer 2: Processing Pipeline**
+#### **⚙️ Layer 2: Backend Processing Pipeline (`analyse_pipeline.py`)**
 ```mermaid
 graph LR
-    INPUT[📁 Input Files] --> RF[📖 File Reader]
-    RF --> PE[🔍 Parameter Extractor]
-    PE --> SC[🎯 Scoring Engine]
+    INPUT[Input Files] --> CR[create_results - Lines 18-67]
+    CR --> RF[read_files]
+    RF --> PE[content_to_json]
+    PE --> SC[convert_raw_to_structured]
+    SC --> AR[analyze_results - Lines 151-167]
 ```
 
 #### **🧠 Layer 3: Analysis Engine (8 Parameters)**
 ```mermaid
 graph TB
-    SC[🎯 Scoring Engine] --> PARAMS{📊 Parameter Analysis}
+    SC[Scoring Engine] --> PARAMS{Parameter Analysis}
     
-    PARAMS --> TS[👥 Team Quality]
-    PARAMS --> MS[🌍 Market Size]
-    PARAMS --> TR[📈 Traction]
-    PARAMS --> FS[💰 Financials]
-    PARAMS --> PS[🚀 Product Uniqueness]
-    PARAMS --> CS[🏆 Competition Analysis]
-    PARAMS --> BS[💼 Business Model]
-    PARAMS --> RS[⚠️ Risk Factors]
+    PARAMS --> TS[Team Quality]
+    PARAMS --> MS[Market Size]
+    PARAMS --> TR[Traction]
+    PARAMS --> FS[Financials]
+    PARAMS --> PS[Product Uniqueness]
+    PARAMS --> CS[Competition Analysis]
+    PARAMS --> BS[Business Model]
+    PARAMS --> RS[Risk Factors]
 ```
 
 #### **🤖 Layer 4: Intelligence & Output**
 ```mermaid
 graph TB
-    SCORES[📊 Parameter Scores] --> RF_ENGINE[🚨 Red Flag Detector]
-    SCORES --> REC_ENGINE[💡 Recommendation Engine]
-    BENCH[📊 Benchmarks] --> REC_ENGINE
+    SCORES[Parameter Scores] --> RF_ENGINE[Red Flag Detector]
+    SCORES --> REC_ENGINE[Recommendation Engine]
+    BENCH[Benchmarks] --> REC_ENGINE
     
-    RF_ENGINE --> OUTPUT[📋 Final Results]
+    RF_ENGINE --> OUTPUT[Final Results]
     REC_ENGINE --> OUTPUT
     
-    OUTPUT --> DASHBOARD[📊 Interactive Dashboard]
+    OUTPUT --> DASHBOARD[Return to Frontend]
 ```
 
 ### 🧩 Detailed Component Architecture
@@ -187,95 +291,143 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    START([User Clicks Analyse]) --> VALIDATE{Pitch Deck Uploaded?}
-    VALIDATE -->|No| ERROR[Show Error: Pitch Deck Required]
-    VALIDATE -->|Yes| TRIGGER[Trigger Analysis]
+    subgraph FRONTEND["🖥️ FRONTEND (app.py)"]
+        START([User Clicks Analyse - Line 728]) --> VALIDATE{Pitch Deck Uploaded?<br/>Line 729}
+        VALIDATE -->|No| ERROR[Show Error: Pitch Deck Required<br/>Line 730]
+        VALIDATE -->|Yes| TRIGGER[Trigger Analysis<br/>Line 732]
+        UPDATE_SESSION[Update Session State<br/>Lines 740-742]
+        RERUN[st.rerun - Line 744]
+        SHOW_DASHBOARD[Display Dashboard<br/>Lines 749-823]
+    end
     
-    TRIGGER --> CALL_CREATE[Call create_results]
-    CALL_CREATE --> READ_FILES[read_files]
+    subgraph BACKEND["⚙️ BACKEND (analyse_pipeline.py)"]
+        CALL_CREATE[create_results<br/>Line 18]
+        READ_FILES[read_files<br/>Line 28]
+        EXTRACT_PARAMS[content_to_json<br/>Line 31]
+        CREATE_DF[Create DataFrame<br/>Line 34]
+        FILTER_DF[Filter Parameters<br/>Lines 39-40]
+        SCORE_CONVERT[convert_raw_to_structured<br/>Line 45]
+        CALC_WEIGHTED[Calculate Weighted Scores<br/>Line 49]
+        FINAL_SCORE[Sum Final Score<br/>Line 52]
+        DETECT_FLAGS[detect_red_flags<br/>Line 57]
+        GEN_RECS[generate_recommendations<br/>Line 61]
+        RETURN_RESULTS[Return Results<br/>Line 67]
+    end
     
-    READ_FILES --> LOOP_FILES{For Each File}
-    LOOP_FILES --> READ_SINGLE[read_file]
-    READ_SINGLE --> CHECK_TYPE{File Type?}
+    subgraph UTILS["📚 Utils Layer"]
+        LOOP_FILES{For Each File}
+        READ_SINGLE[read_file]
+        CHECK_TYPE{File Type?}
+        PDF_EXTRACT[PyPDF2 Extract]
+        DOCX_EXTRACT[python-docx Extract]
+        TXT_EXTRACT[UTF-8 Decode]
+        SCORE_PARAMS{Score Each Parameter}
+        TEAM_SCORE[parse_team]
+        MARKET_SCORE[parse_market_size]
+        TRACTION_SCORE[parse_traction]
+    end
     
-    CHECK_TYPE -->|PDF| PDF_EXTRACT[PyPDF2 Extract]
-    CHECK_TYPE -->|DOCX| DOCX_EXTRACT[python-docx Extract]
-    CHECK_TYPE -->|TXT| TXT_EXTRACT[UTF-8 Decode]
+    TRIGGER -->|Line 739| CALL_CREATE
+    CALL_CREATE --> READ_FILES
+    READ_FILES --> LOOP_FILES
+    LOOP_FILES --> READ_SINGLE
+    READ_SINGLE --> CHECK_TYPE
+    CHECK_TYPE -->|PDF| PDF_EXTRACT
+    CHECK_TYPE -->|DOCX| DOCX_EXTRACT
+    CHECK_TYPE -->|TXT| TXT_EXTRACT
     
-    PDF_EXTRACT --> CONTENT_DICT[Build Content Dict]
-    DOCX_EXTRACT --> CONTENT_DICT
-    TXT_EXTRACT --> CONTENT_DICT
+    PDF_EXTRACT --> EXTRACT_PARAMS
+    DOCX_EXTRACT --> EXTRACT_PARAMS
+    TXT_EXTRACT --> EXTRACT_PARAMS
     
-    CONTENT_DICT --> MORE_FILES{More Files?}
-    MORE_FILES -->|Yes| LOOP_FILES
-    MORE_FILES -->|No| EXTRACT_PARAMS[content_to_json]
+    EXTRACT_PARAMS --> CREATE_DF
+    CREATE_DF --> FILTER_DF
+    FILTER_DF --> SCORE_CONVERT
+    SCORE_CONVERT --> SCORE_PARAMS
     
-    EXTRACT_PARAMS --> JSON_PARAMS[Structured JSON]
-    JSON_PARAMS --> CREATE_DF[Create DataFrame]
-    CREATE_DF --> FILTER_DF[Filter Parameters]
+    SCORE_PARAMS --> TEAM_SCORE
+    SCORE_PARAMS --> MARKET_SCORE
+    SCORE_PARAMS --> TRACTION_SCORE
     
-    FILTER_DF --> SCORE_CONVERT[convert_raw_to_structured]
-    SCORE_CONVERT --> SCORE_PARAMS{Score Each Parameter}
+    TEAM_SCORE --> CALC_WEIGHTED
+    MARKET_SCORE --> CALC_WEIGHTED
+    TRACTION_SCORE --> CALC_WEIGHTED
     
-    SCORE_PARAMS --> TEAM_SCORE[parse_team]
-    SCORE_PARAMS --> MARKET_SCORE[parse_market_size]
-    SCORE_PARAMS --> TRACTION_SCORE[parse_traction]
-    SCORE_PARAMS --> OTHER_SCORES[Other Scorers]
+    CALC_WEIGHTED --> FINAL_SCORE
+    FINAL_SCORE --> DETECT_FLAGS
+    DETECT_FLAGS --> GEN_RECS
+    GEN_RECS --> RETURN_RESULTS
     
-    TEAM_SCORE --> ADD_WEIGHTS[Add Weights & Benchmarks]
-    MARKET_SCORE --> ADD_WEIGHTS
-    TRACTION_SCORE --> ADD_WEIGHTS
-    OTHER_SCORES --> ADD_WEIGHTS
-    
-    ADD_WEIGHTS --> CALC_WEIGHTED[Calculate Weighted Scores]
-    CALC_WEIGHTED --> FINAL_SCORE[Sum Final Score]
-    
-    FINAL_SCORE --> DETECT_FLAGS[detect_red_flags]
-    DETECT_FLAGS --> GEN_RECS[generate_recommendations]
-    
-    GEN_RECS --> RETURN_RESULTS[Return Results]
-    RETURN_RESULTS --> UPDATE_SESSION[Update Session State]
-    UPDATE_SESSION --> RERUN[st.rerun]
-    RERUN --> SHOW_DASHBOARD[Display Dashboard]
+    RETURN_RESULTS -->|Line 739| UPDATE_SESSION
+    UPDATE_SESSION --> RERUN
+    RERUN --> SHOW_DASHBOARD
     
     ERROR --> END([End])
     SHOW_DASHBOARD --> END
+    
+    style START fill:#4285f4,color:#fff
+    style CALL_CREATE fill:#34a853,color:#fff
+    style RETURN_RESULTS fill:#fbbc05,color:#000
 ```
 
 #### **🔄 Re-Analysis Flow** (When User Clicks "🔄 Analyse Again")
 
 ```mermaid
 flowchart TD
-    START([User Clicks Analyse Again]) --> TRIGGER[Button Click]
-    TRIGGER --> CALL_ANALYZE[Call analyze_results]
+    subgraph FRONTEND2["🖥️ FRONTEND (app.py)"]
+        START([User Clicks Re-analyze<br/>Line 862]) --> TRIGGER[Button Click Event]
+        UPDATE_SESSION[Update Session Variables<br/>Lines 865-867]
+        RERUN[st.rerun - Line 870]
+        UPDATED_DASHBOARD[Updated Dashboard Display<br/>Lines 749-823]
+    end
     
-    CALL_ANALYZE --> GET_DF[Get Current DataFrame]
-    GET_DF --> RECALC_WEIGHTED[Recalculate Weighted Scores]
-    RECALC_WEIGHTED --> NEW_FINAL[New Final Score]
+    subgraph BACKEND2["⚙️ BACKEND (analyse_pipeline.py)"]
+        CALL_ANALYZE[analyze_results<br/>Line 151]
+        GET_DF[Process DataFrame<br/>Line 153]
+        RECALC_WEIGHTED[Recalculate Weighted Scores<br/>Line 154]
+        NEW_FINAL[New Final Score<br/>Line 157]
+        REFRESH_FLAGS[detect_red_flags<br/>Line 162]
+        REFRESH_RECS[generate_recommendations<br/>Line 166]
+    end
     
-    NEW_FINAL --> REFRESH_FLAGS[Refresh Red Flags]
-    REFRESH_FLAGS --> REFRESH_RECS[Refresh Recommendations]
-    
-    REFRESH_RECS --> UPDATE_SESSION[Update Session Variables]
-    UPDATE_SESSION --> RERUN[st.rerun]
-    RERUN --> UPDATED_DASHBOARD[Updated Dashboard Display]
-    
+    TRIGGER -->|Line 864| CALL_ANALYZE
+    CALL_ANALYZE --> GET_DF
+    GET_DF --> RECALC_WEIGHTED
+    RECALC_WEIGHTED --> NEW_FINAL
+    NEW_FINAL --> REFRESH_FLAGS
+    REFRESH_FLAGS --> REFRESH_RECS
+    REFRESH_RECS -->|Return| UPDATE_SESSION
+    UPDATE_SESSION --> RERUN
+    RERUN --> UPDATED_DASHBOARD
     UPDATED_DASHBOARD --> END([End])
+    
+    style START fill:#4285f4,color:#fff
+    style CALL_ANALYZE fill:#fbbc05,color:#000
 ```
 
 #### **✏️ Interactive Parameter Editing Flow** (Real-time Updates)
 
 ```mermaid
 flowchart TD
-    START([User Edits Parameter]) --> STREAMLIT_UPDATE[Streamlit Auto-Update]
-    STREAMLIT_UPDATE --> SESSION_UPDATE[Session State Updated]
-    SESSION_UPDATE --> METRICS_CALC[Calculate Metrics]
+    subgraph FRONTEND3["🖥️ FRONTEND (app.py)"]
+        START([User Edits in Data Editor<br/>Line 812]) --> STREAMLIT_UPDATE[Streamlit Auto-Update<br/>Line 819]
+        SESSION_UPDATE[Session State Updated<br/>Line 819]
+        DISPLAY_UPDATE[Display Updates]
+    end
     
-    METRICS_CALC --> CALL_ANALYZE[analyze_results]
-    CALL_ANALYZE --> INSTANT_RECALC[Instant Recalculation]
-    INSTANT_RECALC --> DISPLAY_UPDATE[Display Updates]
+    subgraph BACKEND3["⚙️ BACKEND (analyse_pipeline.py)"]
+        CALL_ANALYZE[analyze_results<br/>Line 762]
+        INSTANT_RECALC[Instant Recalculation<br/>Lines 153-167]
+    end
     
+    STREAMLIT_UPDATE --> SESSION_UPDATE
+    SESSION_UPDATE --> CALL_ANALYZE
+    CALL_ANALYZE --> INSTANT_RECALC
+    INSTANT_RECALC --> DISPLAY_UPDATE
     DISPLAY_UPDATE --> END([Real-time UI Update])
+    
+    style START fill:#4285f4,color:#fff
+    style CALL_ANALYZE fill:#34a853,color:#fff
 ```
 
 #### **⚡ Key Execution Points**
