@@ -2,17 +2,16 @@
 
 ## 📋 Table of Contents
 1. [Overview](#overview)
-2. [Design Philosophy](#design-philosophy)
-3. [User Journey](#user-journey)
-4. [Page Structure](#page-structure)
-5. [Component Breakdown](#component-breakdown)
-6. [Company Data Features](#company-data-features)
+2. [UI Architecture](#ui-architecture)
+3. [Design Philosophy](#design-philosophy)
+4. [User Journey](#user-journey)
+5. [Page Structure](#page-structure)
+6. [Component Breakdown](#component-breakdown)
 7. [Color System](#color-system)
 8. [Interactive Elements](#interactive-elements)
 9. [Data Visualizations](#data-visualizations)
-10. [Document Management](#document-management)
-11. [Responsive Design](#responsive-design)
-12. [Accessibility Features](#accessibility-features)
+10. [Responsive Design](#responsive-design)
+11. [Accessibility Features](#accessibility-features)
 
 ---
 
@@ -33,6 +32,32 @@ This Streamlit application provides an AI-powered analyst platform for startup e
 
 ---
 
+## 🎨 UI Architecture
+
+The UI is built with **Streamlit** (`app.py`) and follows Google Material Design principles with a dark theme.
+
+### 📊 **UI Components Overview**
+
+| **Component** | **Function** | **Location** |
+|--------------|-------------|------------|
+| **Header** | `display_header()` | Lines 231-253 |
+| **File Upload** | `handle_file_uploads()` | Lines 538-584 |
+| **Metrics Cards** | `display_metrics()` | Lines 589-640 |
+| **Charts** | `create_*_chart()` | Lines 284-533 |
+| **Insights Panel** | `display_insights()` | Lines 645-682 |
+| **Main App** | `main()` | Lines 687-899 |
+
+### 🔄 **UI State Management**
+
+```python
+# Session state variables that control the UI
+st.session_state.show_results    # Toggle upload/results view
+st.session_state.results_df      # Analysis data for charts
+st.session_state.summary_df      # Metrics display data
+```
+
+---
+
 ## 🎨 Design Philosophy
 
 ### Core Principles:
@@ -50,8 +75,6 @@ This Streamlit application provides an AI-powered analyst platform for startup e
 ---
 
 ## 🚀 User Journey
-
-### Step-by-Step Flow:
 
 ```mermaid
 graph LR
@@ -190,14 +213,10 @@ graph LR
 
 ## 🧩 Component Breakdown
 
-### 1. **Metrics Cards** (`display_metrics()`)
-- **Purpose**: Quick overview of analysis results
-- **Location**: Top of results page
-- **Components**:
-  - Overall Score (with delta comparison)
-  - Risk Level (Low/Medium/High)
-  - Red Flags Count
-  - Recommendations Count
+### 1. **Metrics Cards** 
+- **Location**: Lines 589-640
+- **Shows**: Score, Risk Level, Red Flags, Recommendations
+- **Design**: Google-styled cards with delta indicators
 
 ### 2. **File Uploaders** (`handle_file_uploads()`)
 - **Purpose**: Dual-mode document input system
@@ -210,22 +229,13 @@ graph LR
   - File type validation
   - Success feedback with document count
 
-### 3. **Chart Visualizations**
-- **Gauge Chart** (`create_gauge_chart()`)
-  - Shows overall investment readiness score
-  - Color zones: Red (0-50), Yellow (50-75), Green (75-100)
-  
-- **Line Chart** (`create_comparison_chart()`)
-  - Compares Score vs Threshold vs Benchmark
-  - Interactive hover tooltips
-  
-- **Radar Chart** (`create_radar_chart()`)
-  - Multi-parameter analysis
-  - Overlapping areas show gaps
-  
-- **Heatmap** (`create_heatmap()`)
-  - Parameter correlation matrix
-  - Color intensity shows relationships
+### 3. **Visualizations**
+| **Chart Type** | **Purpose** | **Lines** |
+|---------------|------------|-----------|
+| **Gauge** | Overall score (0-100) | 284-328 |
+| **Line** | Score vs Benchmark trends | 330-420 |
+| **Radar** | Multi-parameter view | 422-489 |
+| **Heatmap** | Correlation matrix | 491-533 |
 
 ### 4. **Insights Panel** (`display_insights()`)
 - **Risk Assessment**:
@@ -327,13 +337,12 @@ TEXT_SECONDARY = "#9aa0a6"  /* Subtle text */
 
 ## 🎮 Interactive Elements
 
-### Buttons
+### Button Actions
 ```python
-# Primary Action Button
-[🔍 Analyze Documents]  # Blue background, white text
-
-# Secondary Actions
-[🔄 Re-analyze] [📥 Download] [📧 Share] [➕ New Analysis]
+[🔍 Analyze Documents]  # Primary action - Line 728
+[🔄 Re-analyze]        # Refresh results - Line 862  
+[📥 Download]          # Export CSV - Line 873
+[➕ New Analysis]      # Reset UI - Line 887
 ```
 
 ### State Management
@@ -486,7 +495,7 @@ DOCUMENT_PATTERNS = {
 
 ---
 
-## 📝 Best Practices for Developers
+## 💡 UI Best Practices
 
 ### When Adding Features:
 1. **Follow existing patterns** - Keep consistency
@@ -565,6 +574,19 @@ DOCUMENT_PATTERNS = {
 10. **Preview tabs empty**: Ensure company is selected first
 
 ---
+
+## 📁 UI File Structure (`app.py`)
+
+```
+Configuration       Lines 1-27
+CSS Styling        Lines 32-226  
+Header/Footer      Lines 231-278
+Chart Functions    Lines 284-533
+Upload Handler     Lines 538-584
+Metrics Display    Lines 589-640
+Insights Display   Lines 645-682
+Main Application   Lines 687-899
+```
 
 ## 📚 Further Reading
 
