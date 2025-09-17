@@ -2,15 +2,16 @@
 
 ## 📋 Table of Contents
 1. [Overview](#overview)
-2. [Design Philosophy](#design-philosophy)
-3. [User Journey](#user-journey)
-4. [Page Structure](#page-structure)
-5. [Component Breakdown](#component-breakdown)
-6. [Color System](#color-system)
-7. [Interactive Elements](#interactive-elements)
-8. [Data Visualizations](#data-visualizations)
-9. [Responsive Design](#responsive-design)
-10. [Accessibility Features](#accessibility-features)
+2. [UI Architecture](#ui-architecture)
+3. [Design Philosophy](#design-philosophy)
+4. [User Journey](#user-journey)
+5. [Page Structure](#page-structure)
+6. [Component Breakdown](#component-breakdown)
+7. [Color System](#color-system)
+8. [Interactive Elements](#interactive-elements)
+9. [Data Visualizations](#data-visualizations)
+10. [Responsive Design](#responsive-design)
+11. [Accessibility Features](#accessibility-features)
 
 ---
 
@@ -24,6 +25,32 @@ This Streamlit application provides an AI-powered analysis platform for startup 
 - 📊 **Interactive Dashboards** - Multiple visualization types for data insights
 - 💡 **Smart Recommendations** - AI-generated investment recommendations
 - 🎨 **Google Material Design** - Clean, modern interface with dark theme
+
+---
+
+## 🎨 UI Architecture
+
+The UI is built with **Streamlit** (`app.py`) and follows Google Material Design principles with a dark theme.
+
+### 📊 **UI Components Overview**
+
+| **Component** | **Function** | **Location** |
+|--------------|-------------|------------|
+| **Header** | `display_header()` | Lines 231-253 |
+| **File Upload** | `handle_file_uploads()` | Lines 538-584 |
+| **Metrics Cards** | `display_metrics()` | Lines 589-640 |
+| **Charts** | `create_*_chart()` | Lines 284-533 |
+| **Insights Panel** | `display_insights()` | Lines 645-682 |
+| **Main App** | `main()` | Lines 687-899 |
+
+### 🔄 **UI State Management**
+
+```python
+# Session state variables that control the UI
+st.session_state.show_results    # Toggle upload/results view
+st.session_state.results_df      # Analysis data for charts
+st.session_state.summary_df      # Metrics display data
+```
 
 ---
 
@@ -45,38 +72,21 @@ This Streamlit application provides an AI-powered analysis platform for startup 
 
 ## 🚀 User Journey
 
-### Step-by-Step Flow:
-
 ```mermaid
 graph LR
     A[Landing Page] --> B[Upload Documents]
     B --> C[Click Analyze]
-    C --> D[AI Processing]
-    D --> E[View Results]
-    E --> F[Explore Charts]
-    F --> G[Read Insights]
-    G --> H[Take Action]
+    C --> D[View Results]
+    D --> E[Explore Charts]
+    E --> F[Read Insights]
 ```
 
-### 1. **Landing Page** (Initial State)
-   - Large, welcoming header with platform name
-   - Team branding prominently displayed
-   - Clear upload section
+### Key UI States:
 
-### 2. **Document Upload**
-   - Required: Pitch Deck (PDF)
-   - Optional: Call Transcripts, Emails, Founder Docs
-   - Visual feedback for successful uploads
-
-### 3. **Analysis Process**
-   - Progress bar shows analysis status
-   - Loading spinner with descriptive text
-   - Success message when complete
-
-### 4. **Results Dashboard**
-   - Executive summary with key metrics
-   - Multiple visualization options
-   - Detailed insights and recommendations
+1. **Upload Mode** - Initial state with file uploaders
+2. **Loading State** - Progress bar during analysis  
+3. **Results Mode** - Dashboard with charts and metrics
+4. **Edit Mode** - Interactive data table for modifications
 
 ---
 
@@ -87,7 +97,7 @@ graph LR
 ┌─────────────────────────────────────────┐
 │     🚀 AI-Powered Startup Analysis      │ <- Main Title (3.5rem)
 │         ✨ Team Gen AI Crew ✨           │ <- Team Name (2.5rem)
-│      GenAI Exchange Hackathon 2024      │ <- Event Info (1rem)
+│      GenAI Exchange Hackathon 2025      │ <- Event Info (1rem)
 └─────────────────────────────────────────┘
 ```
 
@@ -132,49 +142,32 @@ graph LR
 
 ## 🧩 Component Breakdown
 
-### 1. **Metrics Cards** (`display_metrics()`)
-- **Purpose**: Quick overview of analysis results
-- **Location**: Top of results page
-- **Components**:
-  - Overall Score (with delta comparison)
-  - Risk Level (Low/Medium/High)
-  - Red Flags Count
-  - Recommendations Count
+### 1. **Metrics Cards** 
+- **Location**: Lines 589-640
+- **Shows**: Score, Risk Level, Red Flags, Recommendations
+- **Design**: Google-styled cards with delta indicators
 
-### 2. **File Uploaders** (`handle_file_uploads()`)
-- **Purpose**: Accept document inputs
-- **Features**:
-  - Drag-and-drop interface
-  - File type validation
-  - Success feedback
-  - File size indicators
+### 2. **File Upload Section**
+- **Location**: Lines 538-584  
+- **Features**: Drag-and-drop, file validation, success feedback
+- **Layout**: 2 columns (Required | Optional)
 
-### 3. **Chart Visualizations**
-- **Gauge Chart** (`create_gauge_chart()`)
-  - Shows overall investment readiness score
-  - Color zones: Red (0-50), Yellow (50-75), Green (75-100)
-  
-- **Line Chart** (`create_comparison_chart()`)
-  - Compares Score vs Threshold vs Benchmark
-  - Interactive hover tooltips
-  
-- **Radar Chart** (`create_radar_chart()`)
-  - Multi-parameter analysis
-  - Overlapping areas show gaps
-  
-- **Heatmap** (`create_heatmap()`)
-  - Parameter correlation matrix
-  - Color intensity shows relationships
+### 3. **Visualizations**
+| **Chart Type** | **Purpose** | **Lines** |
+|---------------|------------|-----------|
+| **Gauge** | Overall score (0-100) | 284-328 |
+| **Line** | Score vs Benchmark trends | 330-420 |
+| **Radar** | Multi-parameter view | 422-489 |
+| **Heatmap** | Correlation matrix | 491-533 |
 
-### 4. **Insights Panel** (`display_insights()`)
-- **Risk Assessment**:
-  - Expandable cards for each issue
-  - Impact and priority indicators
-  
-- **Recommendations**:
-  - AI-generated advice in info box
-  - Implementation timeline
-  - Expected impact metrics
+### 4. **Insights Panel**
+- **Location**: Lines 645-682
+- **Risk Cards**: Expandable with severity indicators
+- **Recommendations**: AI advice with implementation timeline
+
+### 5. **Data Editor**
+- **Location**: Lines 812-819
+- **Feature**: Real-time editable table with instant updates
 
 ---
 
@@ -211,28 +204,20 @@ TEXT_SECONDARY = "#9aa0a6"  /* Subtle text */
 
 ## 🎮 Interactive Elements
 
-### Buttons
+### Button Actions
 ```python
-# Primary Action Button
-[🔍 Analyze Documents]  # Blue background, white text
-
-# Secondary Actions
-[🔄 Re-analyze] [📥 Download] [📧 Share] [➕ New Analysis]
+[🔍 Analyze Documents]  # Primary action - Line 728
+[🔄 Re-analyze]        # Refresh results - Line 862  
+[📥 Download]          # Export CSV - Line 873
+[➕ New Analysis]      # Reset UI - Line 887
 ```
 
-### State Management
-- **Session State Variables**:
-  - `show_results`: Toggle between upload/results view
-  - `results_df`: Stores analysis data
-  - `summary_df`: Stores summary metrics
-  - `analysis_progress`: Tracks analysis completion
-
 ### User Interactions:
-1. **File Upload** → Visual feedback
-2. **Button Click** → Loading state → Result
+1. **File Upload** → Instant visual feedback
+2. **Button Click** → Loading state → Results display
 3. **Tab Switch** → Instant chart change
-4. **Data Edit** → Real-time update
-5. **Expander Click** → Smooth reveal
+4. **Data Edit** → Real-time recalculation
+5. **Expander Click** → Smooth content reveal
 
 ---
 
@@ -330,30 +315,13 @@ TEXT_SECONDARY = "#9aa0a6"  /* Subtle text */
 
 ---
 
-## 📝 Best Practices for Developers
+## 💡 UI Best Practices
 
-### When Adding Features:
-1. **Follow existing patterns** - Keep consistency
-2. **Use color system** - Don't hardcode colors
-3. **Add loading states** - Never leave users waiting
-4. **Provide feedback** - Success/error messages
-5. **Test dark mode** - Ensure readability
-
-### Code Organization:
-```python
-# Good Structure:
-# 1. Constants
-# 2. CSS/Styling
-# 3. Components
-# 4. Charts
-# 5. Main Logic
-```
-
-### Performance Tips:
-- Use `@st.cache_data` for heavy computations
-- Minimize reruns with proper state management
-- Load large data asynchronously
-- Optimize chart rendering
+- **Use color constants** - Never hardcode hex values
+- **Add loading states** - Show progress for all async operations
+- **Follow component pattern** - `display_*()` for UI, `create_*_chart()` for visuals
+- **Cache heavy operations** - Use `@st.cache_data` decorator
+- **Test dark mode** - Ensure all elements are readable
 
 ---
 
@@ -388,11 +356,25 @@ TEXT_SECONDARY = "#9aa0a6"  /* Subtle text */
 
 ---
 
+## 📁 UI File Structure (`app.py`)
+
+```
+Configuration       Lines 1-27
+CSS Styling        Lines 32-226  
+Header/Footer      Lines 231-278
+Chart Functions    Lines 284-533
+Upload Handler     Lines 538-584
+Metrics Display    Lines 589-640
+Insights Display   Lines 645-682
+Main Application   Lines 687-899
+```
+
 ## 📚 Further Reading
 
 - [Streamlit Documentation](https://docs.streamlit.io)
 - [Google Material Design](https://material.io/design)
 - [Plotly Charts](https://plotly.com/python/)
 - [Dark UI Best Practices](https://material.io/design/color/dark-theme.html)
+- [Frontend-Backend Architecture Patterns](https://www.patterns.dev/posts/rendering-patterns/)
 
 ---
