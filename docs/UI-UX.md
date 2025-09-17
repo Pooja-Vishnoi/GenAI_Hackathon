@@ -137,8 +137,7 @@ graph LR
 ┌─────────────────────────────────────────┐
 │   🚀 AI Analyst for Startup Evaluation  │ <- Main Title (3.5rem)
 │         ✨ Team Gen AI Crew ✨           │ <- Team Name (2.5rem)
-│  Synthesizing founder materials & data  │ <- Tagline (1.2rem)
-│   GenAI Exchange Hackathon 2024 | Google│ <- Event Info (1rem)
+│      GenAI Exchange Hackathon 2025      │ <- Event Info (1rem)
 └─────────────────────────────────────────┘
 ```
 

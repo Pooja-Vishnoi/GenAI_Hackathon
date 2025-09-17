@@ -263,8 +263,7 @@ def display_header():
         <p style="font-size: 1rem; color: #9aa0a6; font-style: italic; margin-top: 0.5rem;">
             <span class="g-blue">Gen</span><span class="g-red">AI</span>
             <span style="color: var(--text-secondary);"> Exchange</span>
-            <span class="g-yellow"> Hackathon</span> 2024
-            | Powered by Google AI Technologies
+            <span class="g-yellow"> Hackathon</span> 2025
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -283,7 +282,7 @@ def display_footer():
         <small style='color: #9aa0a6;'>
             Built for <span style='color: {GOOGLE_BLUE};'>Gen</span><span style='color: {GOOGLE_RED};'>AI</span>
             <span style='color: #9aa0a6;'> Exchange</span>
-            <span style='color: {GOOGLE_YELLOW};'> Hackathon</span> 2024
+            <span style='color: {GOOGLE_YELLOW};'> Hackathon</span> 2025
         </small>
         <br>
         <small style='color: #9aa0a6;'>
