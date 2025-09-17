@@ -24,11 +24,17 @@ def create_results(uploaded_files = None):
 
     if uploaded_files:
 
-        # Extract file wise content in dict. pdf part in progress
-        uploaded_files_content = read_files(uploaded_files)  
+        try:
+            uploaded_files_content = read_files(uploaded_files)  
+            print(f"The content of uploaded files are: {uploaded_files_content}")
+        except Exception as e:
+            print(e)
 
-        # convert to standard json parameter format
-        startup_extracted_data = content_to_json(uploaded_files_content)
+        try:
+            startup_extracted_data = content_to_json(content=uploaded_files_content)
+            print(f"The Extracted data from gemini is: {startup_extracted_data}")
+        except Exception as e:
+            print(e)
 
         # Move all details from json to dataframe to populate on dashboard
         startup_extracted_df = pd.DataFrame(list(startup_extracted_data.items()), columns=["Parameters", "Details"])

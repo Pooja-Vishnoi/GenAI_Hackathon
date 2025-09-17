@@ -1,38 +1,47 @@
 # read_files.py
 import os
-import docx
-from Utils.pdf_file_reader import extract_pdf_file_content
-from PyPDF2 import PdfReader
+from collections import namedtuple
+from Utils.ai_startup_utility import AIStartupUtility
+import os
+from docx import Document
+
 
 
 def read_file(uploaded_file):
     """
-    Reads a single uploaded file (pdf, docx, txt) and extracts text content.
+    Reads a single uploaded file (pdf, docx, doc, txt) and extracts text content.
+    For .doc and .docx, converts to PDF using LibreOffice and uses PDF extraction.
     :param uploaded_file: streamlit UploadedFile object
     :return: extracted text as string
     """
     filename = uploaded_file.name
     ext = os.path.splitext(filename)[1].lower()
     text = ""
+    analyst = AIStartupUtility()
 
     if ext == ".pdf":
-        # pdf_reader_dict = extract_pdf_file_content(uploaded_file)
-        # print(pdf_reader_dict)
-        # text = " ".join(pdf_reader_dict.values())
-        pdf_reader = PdfReader(uploaded_file)
-        for page in pdf_reader.pages:
-            text += page.extract_text() or ""
-
-    elif ext in [".docx", ".doc"]:  # docx handled, doc may be partial
         try:
-            doc = docx.Document(uploaded_file)
-            text = "\n".join([para.text for para in doc.paragraphs])
+            analyst = AIStartupUtility()
+            text_data = analyst.extract_text_from_pdf(filename)
+            print(text_data)
+            text =text_data
         except Exception as e:
-            text = f"[Error reading Word file: {e}]"
+            text = f"[Error reading PDF file: {e}]"
+
+    elif ext==".docx":
+        try:
+            doc = Document(filename)
+            text = [paragraph.text for paragraph in doc.paragraphs if paragraph.text]
+            return '\n'.join(text)
+        except Exception as e:
+            print(e)
+            return text
 
     elif ext == ".txt":
-        text = uploaded_file.read().decode("utf-8", errors="ignore")
-
+        try:
+            text = uploaded_file.read().decode("utf-8", errors="ignore")
+        except Exception as e:
+            text = f"[Error reading text file: {e}]"
     else:
         text = f"[Unsupported file type: {ext}]"
 
@@ -49,3 +58,5 @@ def read_files(uploaded_files):
     for uploaded_file in uploaded_files:
         results[uploaded_file.name] = read_file(uploaded_file)
     return results
+
+
