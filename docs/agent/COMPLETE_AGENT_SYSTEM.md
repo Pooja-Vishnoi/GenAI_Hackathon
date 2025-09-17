@@ -590,37 +590,99 @@ response = coordinator.run(
 
 ## 🎯 Real Use Cases
 
-### 1. Startup Analysis Pipeline
-```
-You provide: Pitch deck + Financials
-System does: 
-  → Document extraction
-  → Chart analysis
-  → Market research
-  → Score calculation
-  → HITL confirmation
-You get: Investment memo with score
+### Use Case 1: Complete Startup Analysis
+**Input:** Pitch deck (PDF) + Financials (XLSX)
+
+#### Agent Flow:
+1. **Main Coordinator** receives request
+2. **Document Analyzer** extracts: Revenue $2M, 50% YoY growth
+3. **Vision Agent** reads growth charts from slides
+4. **Market Research** finds 3 competitors via CrunchBase
+5. **Investment Analyst** calculates score: 82/100
+6. **HITL Confirmation:** "Approve investment score 82/100?" ✅
+
+#### Generated Investment Memo:
+```markdown
+# Deal Note: FinTechX Series A
+
+## Executive Summary
+FinTechX is a B2B lending platform showing strong traction with $2M ARR 
+and 50% YoY growth. Recommend investment at $20M valuation (10x revenue multiple).
+
+## Investment Score: 82/100 [INVEST]
+
+## Sector Benchmarks:
+- Revenue Multiple: 10x (vs 8-12x sector avg)
+- Growth Rate: 50% (vs 40% sector avg)
+- Burn Multiple: 2.5x (caution)
+
+## Key Strengths:
+✅ Strong product-market fit
+✅ Experienced fintech team
+✅ Enterprise client base
+
+## Risk Factors:
+⚠️ High burn rate vs revenue
+⚠️ Competitive market landscape
+
+## Next Steps: Schedule partner meeting
 ```
 
-### 2. Founder Interview Session
+---
+
+### Use Case 2: Automated Founder Interview
+**Request:** "Interview FinTechX founder"
+
+#### A2A Protocol in Action:
 ```
-You request: "Interview TechCo founder"
-System does:
-  → Schedules voice call via A2A
-  → Asks key questions
-  → Records responses
-  → Analyzes answers
-You get: Interview transcript + insights
+Agent: "Tell me about your product"
+Founder: "We're building AI-powered lending platform..."
+
+Agent: "What's your revenue model?"
+Founder: "B2B SaaS, $500/month per client"
+
+Agent: "Current traction?"
+Founder: "20 enterprise clients, 150% growth QoQ"
 ```
 
-### 3. Competitor Analysis
-```
-You ask: "Compare TechCo to competitors"
-System does:
-  → Searches market data
-  → Analyzes competitors
-  → Creates comparison charts
-You get: Competitive positioning report
+#### Interview Analysis:
+- **Key Insights:**
+  - Clear monetization strategy
+  - Strong early traction
+  - Enterprise focus = higher LTV
+- **Founder Score:** 17/20
+- **Communication:** Clear & Confident
+- **Auto-generated follow-ups:**
+  - Request customer references
+  - Deep dive on unit economics
+
+---
+
+### Use Case 3: Risk Assessment & Deal Memo
+**Input:** TechStartup XYZ deck + financials
+
+#### Red Flags Detected:
+- **Financial:** Burn rate $500K/mo vs $100K revenue
+- **Market:** 3 competitors with 10x funding, market leader owns 80% share
+- **Runway:** Only 5 months remaining
+
+#### Generated Investment Memo:
+```markdown
+# Deal Note: TechStartup XYZ - PASS
+
+## Executive Summary
+High-risk investment with unsustainable burn rate and dominant competition.
+Recommend passing on this opportunity.
+
+## Investment Score: 42/100 [PASS]
+
+## Critical Issues:
+❌ Burn multiple: 5x (critical)
+❌ Market timing: Too late
+❌ Competitive position: Weak
+
+## HITL Override:
+Partner can override if strategic value exists
 ```
 
 ---
