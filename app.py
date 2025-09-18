@@ -3,7 +3,20 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from analyse_pipeline import create_results, recalculate_results, analyze_results
+from Utils.company_data_loader import (
+    get_available_companies,
+    get_company_files,
+    load_company_documents,
+    get_company_metadata,
+    get_benchmark_companies,
+    generate_analysis_context,
+    get_document_summary
+)
 import time
+import io
+import base64
+import zipfile
+import tempfile
 
 # ============================================================================
 # PAGE CONFIGURATION
@@ -229,7 +242,7 @@ def apply_custom_css():
 # HEADER COMPONENT
 # ============================================================================
 def display_header():
-    """Display the main application header with team name prominence"""
+    """Display the main application header with hackathon context"""
     st.markdown("""
     <div style="text-align: center; margin-bottom: 2rem;">
         <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 0.5rem; 
@@ -238,12 +251,15 @@ def display_header():
                    -webkit-text-fill-color: transparent;
                    background-clip: text;
                    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
-            🚀 AI-Powered Startup Analysis Platform
+            🚀 AI Analyst for Startup Evaluation
         </h1>
         <h2 style="font-size: 2.5rem; font-weight: 600; margin: 0.5rem 0;
                    color: #4285f4; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">
             ✨ Team Gen AI Crew ✨
         </h2>
+        <p style="font-size: 1.2rem; color: #e8eaed; margin-top: 0.5rem;">
+            <b>Synthesizing founder materials & public data → Actionable investment insights</b>
+        </p>
         <p style="font-size: 1rem; color: #9aa0a6; font-style: italic; margin-top: 0.5rem;">
             <span class="g-blue">Gen</span><span class="g-red">AI</span>
             <span style="color: var(--text-secondary);"> Exchange</span>
@@ -537,51 +553,414 @@ def create_heatmap(df):
 # ============================================================================
 def handle_file_uploads():
     """
-    Handle document uploads and display upload interface
+    Handle document uploads with company selector and manual upload options
     
     Returns:
-        tuple: (pitch_deck, uploaded_files_list)
+        tuple: (pitch_deck, uploaded_files_list, selected_company)
     """
-    st.markdown('<div class="subheader">📁 Document Upload</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subheader">📁 Document Selection</div>', unsafe_allow_html=True)
     
-    # Create two columns for upload interface
-    col1, col2 = st.columns([1, 1])
+    # Initialize session state for upload mode
+    if 'upload_mode' not in st.session_state:
+        st.session_state.upload_mode = 'company_selector'
+    if 'selected_company' not in st.session_state:
+        st.session_state.selected_company = None
     
-    with col1:
-        with st.container():
-            st.markdown("##### 📎 Required Documents")
-            pitch_deck = st.file_uploader(
-                "Pitch Deck (PDF)",
-                type=["pdf"],
-                key="pitch_deck",
-                help="Upload your startup's pitch deck in PDF format"
-            )
-            if pitch_deck:
-                st.success(f"✅ {pitch_deck.name} uploaded")
+    # Upload mode selector
+    st.markdown("#### 🎯 Choose Data Source")
+    upload_mode = st.radio(
+        "Select how you want to provide startup data:",
+        ["📊 Select from Available Companies", "📤 Upload Custom Documents"],
+        key="upload_mode_radio",
+        horizontal=True,
+        help="Choose to analyze existing company data or upload your own documents"
+    )
     
-    with col2:
-        with st.container():
-            st.markdown("##### 📄 Optional Documents")
-            call_transcript = st.file_uploader(
-                "Call Transcript",
-                type=["doc", "docx", "txt"],
-                key="call_transcript"
-            )
-            email_copy = st.file_uploader(
-                "Email Copy",
-                type=["doc", "docx", "txt"],
-                key="email_copy"
-            )
-            founders_doc = st.file_uploader(
-                "Founders Document",
-                type=["doc", "docx", "txt"],
-                key="founders_doc"
-            )
+    st.markdown("---")
     
-    # Collect all uploaded files
-    uploaded_files = [f for f in [pitch_deck, call_transcript, email_copy, founders_doc] if f is not None]
+    pitch_deck = None
+    uploaded_files = []
+    selected_company = None
     
-    return pitch_deck, uploaded_files
+    if upload_mode == "📊 Select from Available Companies":
+        # Company selector mode
+        companies = get_available_companies()
+        
+        if companies:
+            # Quick selection cards
+            st.markdown("##### 🎯 Quick Selection - Featured Startups")
+            
+            # Featured companies with special badges
+            featured_companies = {
+                "We360 AI": "🤖 AI Leader",
+                "Kredily": "💰 Fintech",
+                "Dr.Doodley": "🏥 Healthcare",
+                "Ctruh": "🥽 XR Tech",
+                "Sensesemi": "🔧 Hardware",
+                "Naario": "👩 Social Impact"
+            }
+            
+            # Create a grid of company cards (3 columns)
+            company_list = list(companies.keys())
+            cols = st.columns(3)
+            
+            # Create clickable cards for featured companies
+            featured_idx = 0
+            for company_name, badge in featured_companies.items():
+                if company_name in company_list:
+                    with cols[featured_idx % 3]:
+                        button_label = f"🏢 {company_name}\n{badge}"
+                        if st.button(
+                            button_label,
+                            key=f"quick_select_{featured_idx}",
+                            use_container_width=True,
+                            help=f"Quick select {company_name} - {badge}"
+                        ):
+                            st.session_state.selected_company = company_name
+                            st.rerun()
+                    featured_idx += 1
+            
+            st.markdown("---")
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.markdown("##### 🏢 All Available Companies")
+                
+                # Create company selector with preview
+                selected_company = st.selectbox(
+                    "Choose a company to analyze:",
+                    ["-- Select a Company --"] + company_list,
+                    key="company_selector",
+                    index=company_list.index(st.session_state.selected_company) + 1 if st.session_state.selected_company in company_list else 0,
+                    help="Select from 14 pre-loaded startup companies"
+                )
+                
+                if selected_company and selected_company != "-- Select a Company --":
+                    st.session_state.selected_company = selected_company
+                    
+                    # Load and display company files
+                    company_folder = companies[selected_company]
+                    files = get_company_files(company_folder)
+                    
+                    # Display file information
+                    st.success(f"✅ **{selected_company}** selected")
+                    
+                    # Show available documents with preview and download options
+                    with st.expander(f"📋 Available Documents for {selected_company}", expanded=True):
+                        doc_count = 0
+                        
+                        # Create tabs for better organization
+                        doc_tabs = st.tabs(["📄 Documents", "👁️ Preview", "📥 Downloads"])
+                        
+                        with doc_tabs[0]:
+                            # List all documents
+                            if files['pitch_deck']:
+                                st.markdown(f"✓ **Pitch Deck:** `{files['pitch_deck'].name}`")
+                                doc_count += 1
+                            if files['founders_checklist']:
+                                st.markdown(f"✓ **Founders Checklist:** `{files['founders_checklist'].name}`")
+                                doc_count += 1
+                            if files['investment_memo']:
+                                st.markdown(f"✓ **Investment Memo:** `{files['investment_memo'].name}`")
+                                doc_count += 1
+                            if files['financials']:
+                                st.markdown(f"✓ **Financial Documents:** `{files['financials'].name}`")
+                                doc_count += 1
+                            for doc in files['other_docs']:
+                                st.markdown(f"✓ **Additional:** `{doc.name}`")
+                                doc_count += 1
+                            
+                            st.info(f"📊 Total documents available: **{doc_count}**")
+                        
+                        with doc_tabs[1]:
+                            # Document preview section
+                            st.markdown("**Preview Documents:**")
+                            
+                            # Create a selectbox for document selection
+                            preview_options = []
+                            preview_files = {}
+                            
+                            if files['pitch_deck']:
+                                preview_options.append(f"Pitch Deck - {files['pitch_deck'].name}")
+                                preview_files[f"Pitch Deck - {files['pitch_deck'].name}"] = files['pitch_deck']
+                            if files['founders_checklist']:
+                                preview_options.append(f"Founders Checklist - {files['founders_checklist'].name}")
+                                preview_files[f"Founders Checklist - {files['founders_checklist'].name}"] = files['founders_checklist']
+                            if files['investment_memo']:
+                                preview_options.append(f"Investment Memo - {files['investment_memo'].name}")
+                                preview_files[f"Investment Memo - {files['investment_memo'].name}"] = files['investment_memo']
+                            
+                            if preview_options:
+                                selected_doc = st.selectbox(
+                                    "Select document to preview:",
+                                    preview_options,
+                                    key=f"preview_select_{selected_company}"
+                                )
+                                
+                                if selected_doc and selected_doc in preview_files:
+                                    file_path = preview_files[selected_doc]
+                                    
+                                    # For PDF files, show embedded viewer
+                                    if file_path.suffix.lower() == '.pdf':
+                                        try:
+                                            with open(file_path, 'rb') as pdf_file:
+                                                pdf_data = pdf_file.read()
+                                                pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
+                                                
+                                                # Show file info
+                                                file_size_mb = len(pdf_data) / (1024 * 1024)
+                                                st.caption(f"📄 File Size: {file_size_mb:.2f} MB")
+                                                
+                                                # Option to view inline or download
+                                                view_option = st.radio(
+                                                    "View Option:",
+                                                    ["Embedded Viewer", "Download to View"],
+                                                    horizontal=True,
+                                                    key=f"view_option_{selected_company}_{selected_doc}"
+                                                )
+                                                
+                                                if view_option == "Embedded Viewer":
+                                                    # Create iframe for PDF viewing
+                                                    pdf_display = f'''
+                                                    <iframe 
+                                                        src="data:application/pdf;base64,{pdf_base64}" 
+                                                        width="100%" 
+                                                        height="600" 
+                                                        type="application/pdf"
+                                                        style="border: 1px solid #5f6368; border-radius: 8px;">
+                                                        <p>Your browser doesn't support embedded PDFs. 
+                                                        <a href="data:application/pdf;base64,{pdf_base64}" download="{file_path.name}">
+                                                        Download PDF</a> instead.</p>
+                                                    </iframe>
+                                                    '''
+                                                    st.markdown(pdf_display, unsafe_allow_html=True)
+                                                else:
+                                                    st.download_button(
+                                                        label=f"⬇️ Download {file_path.name}",
+                                                        data=pdf_data,
+                                                        file_name=file_path.name,
+                                                        mime="application/pdf",
+                                                        key=f"preview_download_{selected_company}_{selected_doc}",
+                                                        use_container_width=True
+                                                    )
+                                        except Exception as e:
+                                            st.error(f"Error loading PDF: {str(e)}")
+                                            st.info("Please use the Downloads tab to access this document.")
+                                    
+                                    elif file_path.suffix.lower() in ['.docx', '.doc']:
+                                        st.info("📝 Word documents cannot be previewed directly. Please download to view.")
+                                        with open(file_path, 'rb') as f:
+                                            st.download_button(
+                                                label=f"⬇️ Download {file_path.name}",
+                                                data=f.read(),
+                                                file_name=file_path.name,
+                                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                                key=f"preview_word_{selected_company}_{selected_doc}",
+                                                use_container_width=True
+                                            )
+                                    else:
+                                        st.info(f"Preview not available for {file_path.suffix} files. Please download to view.")
+                            else:
+                                st.info("No documents available for preview")
+                        
+                        with doc_tabs[2]:
+                            # Download section
+                            st.markdown("**Download Documents:**")
+                            
+                            download_cols = st.columns(2)
+                            col_idx = 0
+                            
+                            # Pitch Deck download
+                            if files['pitch_deck']:
+                                with download_cols[col_idx % 2]:
+                                    with open(files['pitch_deck'], 'rb') as f:
+                                        st.download_button(
+                                            label=f"📄 Pitch Deck",
+                                            data=f.read(),
+                                            file_name=files['pitch_deck'].name,
+                                            mime="application/pdf" if files['pitch_deck'].suffix.lower() == '.pdf' else "application/octet-stream",
+                                            key=f"download_pitch_{selected_company}",
+                                            use_container_width=True
+                                        )
+                                col_idx += 1
+                            
+                            # Founders Checklist download
+                            if files['founders_checklist']:
+                                with download_cols[col_idx % 2]:
+                                    with open(files['founders_checklist'], 'rb') as f:
+                                        mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if files['founders_checklist'].suffix.lower() == '.docx' else "application/pdf"
+                                        st.download_button(
+                                            label=f"📋 Founders Checklist",
+                                            data=f.read(),
+                                            file_name=files['founders_checklist'].name,
+                                            mime=mime_type,
+                                            key=f"download_checklist_{selected_company}",
+                                            use_container_width=True
+                                        )
+                                col_idx += 1
+                            
+                            # Investment Memo download
+                            if files['investment_memo']:
+                                with download_cols[col_idx % 2]:
+                                    with open(files['investment_memo'], 'rb') as f:
+                                        st.download_button(
+                                            label=f"📑 Investment Memo",
+                                            data=f.read(),
+                                            file_name=files['investment_memo'].name,
+                                            mime="application/pdf",
+                                            key=f"download_memo_{selected_company}",
+                                            use_container_width=True
+                                        )
+                                col_idx += 1
+                            
+                            # Financial Documents download
+                            if files['financials']:
+                                with download_cols[col_idx % 2]:
+                                    with open(files['financials'], 'rb') as f:
+                                        st.download_button(
+                                            label=f"💰 Financial Docs",
+                                            data=f.read(),
+                                            file_name=files['financials'].name,
+                                            mime="application/pdf",
+                                            key=f"download_financials_{selected_company}",
+                                            use_container_width=True
+                                        )
+                                col_idx += 1
+                            
+                            # Download all as ZIP
+                            if doc_count > 1:
+                                st.markdown("---")
+                                
+                                # Create a temporary ZIP file
+                                with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_zip:
+                                    with zipfile.ZipFile(tmp_zip.name, 'w') as zipf:
+                                        # Add all available documents to ZIP
+                                        if files['pitch_deck']:
+                                            zipf.write(files['pitch_deck'], files['pitch_deck'].name)
+                                        if files['founders_checklist']:
+                                            zipf.write(files['founders_checklist'], files['founders_checklist'].name)
+                                        if files['investment_memo']:
+                                            zipf.write(files['investment_memo'], files['investment_memo'].name)
+                                        if files['financials']:
+                                            zipf.write(files['financials'], files['financials'].name)
+                                        for doc in files['other_docs']:
+                                            zipf.write(doc, doc.name)
+                                    
+                                    # Read the ZIP file for download
+                                    tmp_zip.seek(0)
+                                    zip_data = open(tmp_zip.name, 'rb').read()
+                                    
+                                    st.download_button(
+                                        label=f"📦 Download All Documents ({doc_count} files)",
+                                        data=zip_data,
+                                        file_name=f"{selected_company}_documents.zip",
+                                        mime="application/zip",
+                                        key=f"download_all_{selected_company}",
+                                        use_container_width=True,
+                                        type="primary"
+                                    )
+                    
+                    # Load the documents
+                    pitch_deck_data, other_docs = load_company_documents(selected_company)
+                    
+                    # Convert to file-like objects for compatibility
+                    if pitch_deck_data:
+                        pitch_deck = io.BytesIO(pitch_deck_data)
+                        pitch_deck.name = files['pitch_deck'].name if files['pitch_deck'] else "pitch_deck.pdf"
+                    
+                    for doc in other_docs:
+                        file_obj = io.BytesIO(doc['data'])
+                        file_obj.name = doc['name']
+                        file_obj.type = doc['type']
+                        uploaded_files.append(file_obj)
+            
+            with col2:
+                # Company statistics
+                st.markdown("##### 📈 Quick Stats")
+                st.metric("Total Companies", len(companies))
+                st.metric("Selected", selected_company if selected_company != "-- Select a Company --" else "None")
+                
+                # Suggestions based on selection
+                if selected_company and selected_company != "-- Select a Company --":
+                    st.markdown("##### 💡 AI Analysis Preview")
+                    
+                    # Get company metadata and analysis context
+                    metadata = get_company_metadata(selected_company)
+                    benchmark_companies = get_benchmark_companies(selected_company)
+                    doc_summary = get_document_summary(selected_company)
+                    
+                    # Display sector and stage
+                    st.info(f"**Sector:** {metadata.get('sector', 'Unknown')}")
+                    st.info(f"**Stage:** {metadata.get('stage', 'Unknown')}")
+                    
+                    # Display benchmark companies if available
+                    if benchmark_companies:
+                        st.markdown("**📊 Benchmark Against:**")
+                        for comp in benchmark_companies[:3]:
+                            st.caption(f"• {comp}")
+                    
+                    # Document readiness indicator
+                    if doc_summary.get('has_required_docs'):
+                        st.success(f"✅ Ready for AI Analysis")
+                    else:
+                        st.warning(f"⚠️ Missing: {', '.join(doc_summary.get('missing_docs', []))}")
+        else:
+            st.warning("⚠️ No companies found in the data directory")
+    
+    else:
+        # Manual upload mode
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            with st.container():
+                st.markdown("##### 📎 Required Documents")
+                pitch_deck = st.file_uploader(
+                    "Pitch Deck (PDF)",
+                    type=["pdf"],
+                    key="pitch_deck_manual",
+                    help="Upload your startup's pitch deck in PDF format"
+                )
+                if pitch_deck:
+                    st.success(f"✅ {pitch_deck.name} uploaded")
+        
+        with col2:
+            with st.container():
+                st.markdown("##### 📄 Optional Documents")
+                call_transcript = st.file_uploader(
+                    "Call Transcript",
+                    type=["doc", "docx", "txt"],
+                    key="call_transcript"
+                )
+                email_copy = st.file_uploader(
+                    "Email Copy",
+                    type=["doc", "docx", "txt"],
+                    key="email_copy"
+                )
+                founders_doc = st.file_uploader(
+                    "Founders Document",
+                    type=["doc", "docx", "txt"],
+                    key="founders_doc"
+                )
+        
+        # Collect all uploaded files
+        uploaded_files = [f for f in [pitch_deck, call_transcript, email_copy, founders_doc] if f is not None]
+    
+    # Add helpful tips
+    with st.expander("💡 Tips for Best Results", expanded=False):
+        st.markdown("""
+        **For Company Selection:**
+        - All 14 companies have pre-loaded pitch decks and supporting documents
+        - Documents are automatically categorized for optimal analysis
+        - No need to upload files manually
+        
+        **For Manual Upload:**
+        - Ensure pitch deck is in PDF format
+        - Include founders checklist for comprehensive analysis
+        - Add financial documents for better investment insights
+        """)
+    
+    return pitch_deck, uploaded_files, selected_company
 
 # ============================================================================
 # METRICS DISPLAY SECTION
@@ -617,9 +996,17 @@ def display_metrics(score, flags, recommendations):
         )
     
     with col3:
+        # Count flags properly - handle list of lists format
+        if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
+            flag_count = len(flags[0])  # Count actual risk points
+        elif isinstance(flags, list):
+            flag_count = len(flags)
+        else:
+            flag_count = 0
+            
         st.metric(
             "Red Flags",
-            len(flags),
+            flag_count,
             delta=None,
             delta_color="inverse"
         )
@@ -640,46 +1027,105 @@ def display_metrics(score, flags, recommendations):
         )
 
 # ============================================================================
-# INSIGHTS DISPLAY SECTION
+# INSIGHTS DISPLAY SECTION - Enhanced for AI Analyst Platform
 # ============================================================================
-def display_insights(flags, recommendations):
+def display_insights(flags, recommendations, company_name=None):
     """
-    Display risk assessment and recommendations
+    Display AI-powered risk assessment and investment recommendations
     
     Args:
-        flags: List of red flags
-        recommendations: AI recommendations
+        flags: List of red flags detected by AI analysis
+        recommendations: AI-generated investment recommendations
+        company_name: Name of the analyzed company for context
     """
-    st.markdown('<div class="subheader">🔍 Analysis Insights</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subheader">🔍 AI Analysis Insights</div>', unsafe_allow_html=True)
+    
+    # Get analysis context if company is specified
+    analysis_context = {}
+    if company_name:
+        analysis_context = generate_analysis_context(company_name)
     
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown("#### 🚨 Risk Assessment")
+        st.markdown("#### 🚨 Risk Assessment & Red Flags")
+        
+        # Display detected risks
         if flags:
-            for i, flag in enumerate(flags):
-                with st.expander(f"⚠️ Issue {i+1}", expanded=True):
-                    st.markdown(f"**{flag}**")
-                    st.markdown(f"<span style='color: {GOOGLE_RED};'>Impact: High</span>", unsafe_allow_html=True)
-                    st.markdown("Priority: Critical")
-        else:
-            st.success("✅ No critical risks detected")
+            # Handle both list of lists and single list format
+            if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
+                # flags is [red_flags_points, red_flags_reference]
+                risk_points = flags[0] if isinstance(flags[0], list) else [flags[0]]
+                risk_references = flags[1] if isinstance(flags[1], list) else [flags[1]] if len(flags) > 1 else []
+                
+                for i, (flag_point, flag_ref) in enumerate(zip(risk_points, risk_references)):
+                    # Convert to string if needed
+                    flag_text = str(flag_point) if not isinstance(flag_point, str) else flag_point
+                    ref_text = str(flag_ref) if not isinstance(flag_ref, str) else flag_ref
+                    
+                    # Determine risk level based on flag content
+                    risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high', 'low revenue']) else "Medium"
+                    risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
+                    
+                    with st.expander(f"⚠️ Risk {i+1}: {flag_text[:30]}...", expanded=(i < 2)):
+                        st.markdown(f"**{flag_text}**")
+                        st.markdown(f"📄 {ref_text}")
+                        st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
+                        st.markdown("**Mitigation:** Review financial metrics and market validation")
+            
+            elif isinstance(flags, list):
+                # Handle simple list of flags
+                for i, flag in enumerate(flags):
+                    # Convert to string if needed
+                    flag_text = str(flag) if not isinstance(flag, str) else flag
+                    
+                    # Determine risk level based on flag content
+                    risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high']) else "Medium"
+                    risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
+                    
+                    with st.expander(f"⚠️ Risk {i+1}: {flag_text[:30]}...", expanded=(i < 2)):
+                        st.markdown(f"**{flag_text}**")
+                        st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
+                        st.markdown("**Mitigation:** Review financial metrics and market validation")
+        
+        # Add sector-specific risks if available
+        if analysis_context.get('risk_flags'):
+            st.markdown("**🎯 Sector-Specific Risks:**")
+            for risk in analysis_context['risk_flags'][:3]:
+                st.caption(f"• {risk.replace('_', ' ').title()}")
+        
+        if not flags:
+            st.success("✅ No critical risks detected in initial screening")
     
     with col2:
-        st.markdown("#### 💡 Recommendations")
+        st.markdown("#### 💡 AI Investment Recommendations")
         
-        # Display recommendations as in original
+        # Display AI recommendations
         if recommendations:
-            st.info(recommendations)
+            if isinstance(recommendations, str):
+                st.info(recommendations)
+            elif isinstance(recommendations, list):
+                for rec in recommendations[:3]:
+                    st.info(f"• {rec}")
             
-            # Add implementation details
+            # Add focus areas from context
+            if analysis_context.get('analysis_focus'):
+                st.markdown("**🎯 Key Analysis Areas:**")
+                for focus in analysis_context['analysis_focus'][:3]:
+                    st.caption(f"• {focus.replace('_', ' ').title()}")
+            
+            # Add implementation timeline
             col_impl1, col_impl2 = st.columns(2)
             with col_impl1:
-                st.markdown(f"<span style='color: {GOOGLE_BLUE};'>📅 Implementation: Medium-term</span>", unsafe_allow_html=True)
+                st.markdown(f"<span style='color: {GOOGLE_BLUE};'>📅 Due Diligence: 2-3 weeks</span>", unsafe_allow_html=True)
             with col_impl2:
-                st.markdown(f"<span style='color: {GOOGLE_GREEN};'>📈 Expected Impact: Positive</span>", unsafe_allow_html=True)
+                st.markdown(f"<span style='color: {GOOGLE_GREEN};'>📈 Investment Horizon: 3-5 years</span>", unsafe_allow_html=True)
         else:
-            st.info("📝 Upload and analyze documents to get AI-powered investment recommendations")
+            st.info("🤖 AI analysis will generate investment recommendations based on:")
+            st.caption("• Pitch deck analysis")
+            st.caption("• Sector benchmarking")
+            st.caption("• Financial metrics evaluation")
+            st.caption("• Market opportunity assessment")
 
 # ============================================================================
 # MAIN APPLICATION
@@ -714,32 +1160,55 @@ def main():
     # UPLOAD SECTION (Show when no results)
     # ========================================================================
     if not st.session_state.show_results:
-        # Handle file uploads
-        pitch_deck, uploaded_files = handle_file_uploads()
+        # Handle file uploads (now returns 3 values)
+        pitch_deck, uploaded_files, selected_company = handle_file_uploads()
         
         # Upload summary and analyze button
         st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col2:
-            if uploaded_files:
+            # Show document status
+            if selected_company and selected_company != "-- Select a Company --":
+                st.success(f"🏢 **{selected_company}** ready for analysis")
+                if uploaded_files:
+                    st.info(f"📎 {len(uploaded_files) + 1} document(s) loaded")
+            elif uploaded_files:
                 st.info(f"📎 {len(uploaded_files)} document(s) ready")
             
-            if st.button("🔍 Analyze Documents", use_container_width=True):
+            # Analyze button with dynamic text
+            button_text = f"🔍 Analyze {selected_company}" if (selected_company and selected_company != "-- Select a Company --") else "🔍 Analyze Documents"
+            
+            if st.button(button_text, use_container_width=True):
                 if pitch_deck is None:
-                    st.error("⚠️ Pitch Deck (PDF) is required")
+                    st.error("⚠️ Please select a company or upload a Pitch Deck (PDF)")
                 else:
-                    with st.spinner("🤖 Analyzing with GenAI Exchange Platform..."):
+                    with st.spinner(f"🤖 Analyzing {selected_company if selected_company else 'documents'} with GenAI Exchange Platform..."):
                         progress_bar = st.progress(0)
-                        for i in range(100):
-                            time.sleep(0.01)
-                            progress_bar.progress(i + 1)
+                        status_text = st.empty()
+                        
+                        # Simulate analysis steps
+                        steps = [
+                            "📄 Loading documents...",
+                            "🔍 Extracting key information...",
+                            "📊 Analyzing financial metrics...",
+                            "🎯 Evaluating investment potential...",
+                            "💡 Generating recommendations..."
+                        ]
+                        
+                        for i, step in enumerate(steps):
+                            status_text.text(step)
+                            for j in range(20):
+                                time.sleep(0.005)
+                                progress_bar.progress((i * 20 + j + 1))
                         
                         st.session_state.show_results = True
+                        st.session_state.analyzed_company = selected_company
                         summary_df, results_df, score, flags, recommendations = create_results(uploaded_files)
                         st.session_state.summary_df = summary_df
                         st.session_state.results_df = results_df
-                        st.success("✅ Analysis complete!")
+                        status_text.empty()
+                        st.success(f"✅ Analysis complete for {selected_company if selected_company else 'uploaded documents'}!")
                         time.sleep(1)
                         st.rerun()
     
@@ -747,6 +1216,15 @@ def main():
     # RESULTS SECTION (Show after analysis)
     # ========================================================================
     else:
+        # Display which company is being analyzed
+        if 'analyzed_company' in st.session_state and st.session_state.analyzed_company:
+            st.markdown(f"""
+            <div style='text-align: center; padding: 1rem; background: linear-gradient(135deg, rgba(66,133,244,0.1), rgba(52,168,83,0.1)); 
+                        border-radius: 10px; margin-bottom: 1rem; border: 1px solid rgba(66,133,244,0.3);'>
+                <h3 style='color: {GOOGLE_BLUE}; margin: 0;'>🏢 Analyzing: {st.session_state.analyzed_company}</h3>
+            </div>
+            """, unsafe_allow_html=True)
+        
         # Ensure results_df is a DataFrame
         if isinstance(st.session_state.results_df, tuple):
             if len(st.session_state.results_df) >= 2:
@@ -818,9 +1296,10 @@ def main():
                 )
                 st.session_state.results_df = edited_df
         
-        # Insights Section
+        # Insights Section with AI Analysis Context
         st.markdown("---")
-        display_insights(flags, recommendations)
+        company_for_insights = st.session_state.get('analyzed_company', None)
+        display_insights(flags, recommendations, company_for_insights)
         
         # Performance Breakdown Expander
         with st.expander("📊 Detailed Performance Analysis", expanded=False):
@@ -887,6 +1366,8 @@ def main():
             if st.button("➕ New Analysis", use_container_width=True):
                 st.session_state.show_results = False
                 st.session_state.results_df = pd.DataFrame()
+                st.session_state.selected_company = None
+                st.session_state.analyzed_company = None
                 st.rerun()
     
     # Display footer

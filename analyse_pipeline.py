@@ -24,11 +24,17 @@ def create_results(uploaded_files = None):
 
     if uploaded_files:
 
-        # Extract file wise content in dict. pdf part in progress
-        uploaded_files_content = read_files(uploaded_files)  
+        try:
+            uploaded_files_content = read_files(uploaded_files)  
+            print(f"The content of uploaded files are: {uploaded_files_content}")
+        except Exception as e:
+            print(e)
 
-        # convert to standard json parameter format
-        startup_extracted_data = content_to_json(uploaded_files_content)
+        try:
+            startup_extracted_data = content_to_json(content=uploaded_files_content)
+            print(f"The Extracted data from gemini is: {startup_extracted_data}")
+        except Exception as e:
+            print(e)
 
         # Move all details from json to dataframe to populate on dashboard
         startup_extracted_df = pd.DataFrame(list(startup_extracted_data.items()), columns=["Parameters", "Details"])
@@ -115,12 +121,22 @@ def detect_red_flags(df):
                 "page": page_no
             }
 
-    # return flags
-    # red_flags = ["Team Score is less than threshold.           Refer page No 1 ", "Financial Score is less than benchmark     Refer page no 3"]
+    # Return structured red flags with both text and reference
+    # This provides a consistent format for the UI to consume
     red_flags_points = ["High churn", "Low revenue growth"]
     red_flags_reference = ["Refer page No 1", "Refer page no 3"]
-    red_flags = [red_flags_points, red_flags_reference]
-    return red_flags
+    
+    # Combine into a structured format
+    red_flags = []
+    for point, ref in zip(red_flags_points, red_flags_reference):
+        red_flags.append({
+            'text': point,
+            'reference': ref
+        })
+    
+    # For backward compatibility, also return the list format
+    # TODO: Update all consumers to use the structured format
+    return [red_flags_points, red_flags_reference]
 
 def generate_recommendations(df, red_flags, green_flags):
     """Dummy recommendations"""
