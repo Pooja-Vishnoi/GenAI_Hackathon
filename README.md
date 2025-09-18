@@ -28,8 +28,60 @@ An intelligent startup evaluation platform that leverages AI to analyze pitch de
 ## 🎪 Quick Demo
 
 ```bash
-# Install and run in one command
-pip install -r requirements.txt && streamlit run app.py
+🚀 streamlit run app.py
+```
+🌐 Visit `http://localhost:8501` to access the web interface.
+
+---
+
+## ✨ Features
+
+### 🏢 **Pre-loaded Company Data**
+- 📊 **14 Pre-loaded Startups**: Ready-to-analyze company data from various sectors
+- 🎯 **Quick Selection Cards**: Featured startups with industry badges for easy access
+- 📂 **Automatic Document Categorization**: Smart classification of pitch decks, memos, and financials
+- 🔄 **Dual Mode Operation**: Choose between pre-loaded companies or upload custom documents
+
+### 📄 **Document Management**
+- 👁️ **PDF Preview**: In-browser PDF viewer for document verification
+- 📥 **Individual Downloads**: Download specific documents per company
+- 📦 **Bulk Download**: ZIP archive with all company documents
+- 📝 **Document Type Detection**: Automatic categorization of uploaded files
+
+### 🔍 **Document Analysis**
+- 📄 **Multi-format Support**: PDF, DOCX, TXT file processing
+- 👁️ **OCR Capabilities**: Extract text from scanned documents using Google Cloud Vision
+- 🧠 **Intelligent Parsing**: AI-powered content extraction and structuring
+- 🏷️ **Sector-Specific Analysis**: Tailored evaluation based on company industry
+
+### 📊 **AI-Powered Startup Evaluation**
+- 🎯 **8-Parameter Evaluation**: Comprehensive scoring across key business dimensions
+- ⚖️ **Weighted Scoring**: Customizable weightage for different parameters
+- 📈 **Benchmark Comparison**: Industry-specific performance benchmarks with peer companies
+- 🚨 **Red Flag Detection**: Automated risk identification with sector-specific considerations
+
+### 🎨 **Interactive Dashboard**
+- ⚡ **Real-time Analysis**: Live scoring updates as you modify parameters
+- 📊 **Visual Analytics**: Interactive charts and trend analysis
+- ✏️ **Editable Data**: Modify scores and see instant impact on final rating
+- 📥 **Export Reports**: Download analysis results as CSV
+- 🏢 **Company Context**: Displays analyzed company name and metadata throughout
+
+### 🤖 **AI Integration**
+- 🔮 **Smart Extraction**: AI-powered parameter extraction from documents 🚧 **[PLANNED]**
+- 💡 **Recommendation Engine**: Contextual investment recommendations ✅ **[IMPLEMENTED]**
+- ⚠️ **Risk Assessment**: Intelligent risk factor identification ✅ **[IMPLEMENTED]**
+
+---
+
+## 🏗️ Architecture
+
+### 🏛️ **High-Level System Overview**
+```mermaid
+graph LR
+    A[📄 Documents] --> B[⚙️ Processing Pipeline]
+    B --> C[🧠 Analysis Engine]
+    C --> D[📊 Interactive Dashboard]
 ```
 
 🌐 Visit `http://localhost:8501` to access the application
