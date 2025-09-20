@@ -28,6 +28,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+
 # ============================================================================
 # CONSTANTS - Google Brand Colors
 # ============================================================================
@@ -61,14 +62,16 @@ def apply_custom_css():
             --shadow: rgba(0, 0, 0, 0.5);
         }}
         
-        /* Main app background */
-        .stApp {{
-            background: var(--bg-primary);
+        /* Force dark background on all systems */
+        html, body, .stApp, [data-testid="stAppViewContainer"], .main {{
+            background-color: {GOOGLE_DARK_GRAY} !important;
+            background: {GOOGLE_DARK_GRAY} !important;
         }}
         
-        /* Main container */
-        .main {{
-            background: var(--bg-primary);
+        /* Main container with forced dark theme */
+        .main, .block-container {{
+            background: {GOOGLE_DARK_GRAY} !important;
+            background-color: {GOOGLE_DARK_GRAY} !important;
         }}
         
         /* Sidebar styling */
@@ -125,22 +128,35 @@ def apply_custom_css():
             border-bottom: 2px solid {GOOGLE_BLUE};
         }}
         
-        /* Google-style buttons */
+        /* Google-style buttons - forced dark theme */
         .stButton > button {{
-            background: {GOOGLE_BLUE};
-            color: white;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            font-weight: 500;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            font-family: 'Google Sans', Arial, sans-serif;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            background: {GOOGLE_BLUE} !important;
+            background-color: {GOOGLE_BLUE} !important;
+            color: white !important;
+            border: none !important;
+            padding: 0.5rem 1.5rem !important;
+            font-weight: 500 !important;
+            border-radius: 4px !important;
+            transition: all 0.2s ease !important;
+            font-family: 'Google Sans', Arial, sans-serif !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
         }}
         
         .stButton > button:hover {{
-            background: #1a73e8;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            background: #1a73e8 !important;
+            background-color: #1a73e8 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+        }}
+        
+        /* Secondary/Download buttons */
+        .stDownloadButton > button {{
+            background-color: {GOOGLE_BLUE} !important;
+            color: white !important;
+            border: 1px solid {GOOGLE_BLUE} !important;
+        }}
+        
+        .stDownloadButton > button:hover {{
+            background-color: #1a73e8 !important;
         }}
         
         /* File uploader styling */
@@ -202,23 +218,23 @@ def apply_custom_css():
         
         /* Success alert */
         .stSuccess {{
-            background: rgba(52, 168, 83, 0.15);
-            border-left: 4px solid {GOOGLE_GREEN};
-            color: var(--text-primary);
+            background: rgba(52, 168, 83, 0.15) !important;
+            border-left: 4px solid {GOOGLE_GREEN} !important;
+            color: var(--text-primary) !important;
         }}
         
         /* Error alert */
         .stError {{
-            background: rgba(234, 67, 53, 0.15);
-            border-left: 4px solid {GOOGLE_RED};
-            color: var(--text-primary);
+            background: rgba(234, 67, 53, 0.15) !important;
+            border-left: 4px solid {GOOGLE_RED} !important;
+            color: var(--text-primary) !important;
         }}
         
         /* Warning/Info alert */
         .stWarning, .stInfo {{
-            background: rgba(66, 133, 244, 0.15);
-            border-left: 4px solid {GOOGLE_BLUE};
-            color: var(--text-primary);
+            background: rgba(66, 133, 244, 0.15) !important;
+            border-left: 4px solid {GOOGLE_BLUE} !important;
+            color: var(--text-primary) !important;
         }}
         
         /* Progress bar */
@@ -231,10 +247,48 @@ def apply_custom_css():
             color: var(--text-primary) !important;
         }}
         
+        /* All paragraph and text elements */
+        p, span, li {{
+            color: var(--text-primary) !important;
+        }}
+        
+        /* Ensure content divs use dark theme */
+        .element-container > div {{
+            color: var(--text-primary) !important;
+        }}
+        
+        /* Force all expander content to have dark background */
+        .streamlit-expanderContent {{
+            background-color: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+        }}
+        
+        /* Fix text overflow in recommendations */
+        .stExpander div[data-testid="stExpanderContent"] {{
+            max-width: 100% !important;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+        }}
+        
         /* Plotly charts dark theme */
         .js-plotly-plot .plotly {{
             background: transparent !important;
         }}
+        
+        /* Force all cards and containers to dark theme */
+        [data-testid="stVerticalBlock"], 
+        [data-testid="stHorizontalBlock"],
+        [data-testid="column"] {{
+            background-color: transparent !important;
+        }}
+        
+        /* Ensure all text in expanders is properly styled */
+        .streamlit-expanderContent p,
+        .streamlit-expanderContent div {{
+            color: var(--text-primary) !important;
+            line-height: 1.6 !important;
+        }}
+        
     </style>
     """, unsafe_allow_html=True)
 
@@ -299,7 +353,7 @@ def display_footer():
 
 def create_gauge_chart(value, title, max_value=100):
     """
-    Create a Google-styled gauge chart for dark theme
+    Create a FICO-style credit score gauge chart for investment readiness
     
     Args:
         value: Current score value
@@ -309,37 +363,101 @@ def create_gauge_chart(value, title, max_value=100):
     Returns:
         Plotly figure object
     """
+    # Define score ranges and colors matching FICO style
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
+        mode = "gauge+number",
         value = value,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title, 'font': {'size': 18, 'color': '#e8eaed', 'family': 'Google Sans, Arial'}},
-        delta = {'reference': max_value * 0.7, 'font': {'color': '#e8eaed'}},
-        number = {'font': {'color': GOOGLE_BLUE, 'size': 40}},
+        domain = {'x': [0, 1], 'y': [0, 0.8]},
+        number = {
+            'suffix': "",
+            'font': {'size': 54, 'color': 'white', 'family': 'Google Sans, Arial', 'weight': 'bold'},
+            'valueformat': '.0f'
+        },
         gauge = {
-            'axis': {'range': [None, max_value], 'tickwidth': 1, 'tickcolor': '#e8eaed'},
-            'bar': {'color': GOOGLE_BLUE},
-            'bgcolor': "#303134",
-            'borderwidth': 2,
-            'bordercolor': "#5f6368",
+            'shape': "angular",
+            'axis': {
+                'range': [0, max_value],
+                'tickwidth': 2,
+                'tickcolor': 'white',
+                'tickmode': 'linear',
+                'tick0': 0,
+                'dtick': 10,
+                'tickfont': {'size': 10, 'color': 'rgba(255, 255, 255, 0.8)'},
+                'showticklabels': True,
+                'tickangle': 0
+            },
+            'bar': {
+                'color': 'white',
+                'thickness': 0.7,
+                'line': {'color': 'black', 'width': 3}
+            },
+            'bgcolor': "rgba(32,33,36,0.3)",
+            'borderwidth': 3,
+            'bordercolor': "rgba(255, 255, 255, 0.3)",
             'steps': [
-                {'range': [0, max_value * 0.5], 'color': 'rgba(234, 67, 53, 0.3)'},  # Red zone
-                {'range': [max_value * 0.5, max_value * 0.75], 'color': 'rgba(251, 188, 5, 0.3)'},  # Yellow zone
-                {'range': [max_value * 0.75, max_value], 'color': 'rgba(52, 168, 83, 0.3)'}  # Green zone
+                # Poor (0-40) - Red
+                {'range': [0, 40], 'color': '#FF4444'},
+                # Fair (40-60) - Pink/Red
+                {'range': [40, 60], 'color': '#FF69B4'},
+                # Good (60-70) - Orange
+                {'range': [60, 70], 'color': '#FFA500'},
+                # Very Good (70-80) - Yellow
+                {'range': [70, 80], 'color': '#FFD700'},
+                # Excellent (80-100) - Green
+                {'range': [80, 100], 'color': '#00C851'}
             ],
             'threshold': {
-                'line': {'color': GOOGLE_GREEN, 'width': 4},
-                'thickness': 0.75,
-                'value': max_value * 0.9
+                'line': {'color': "black", 'width': 5},
+                'thickness': 0.8,
+                'value': value
             }
         }
     ))
     
+    # Add custom annotations for score ranges with better positioning
+    annotations = [
+        # Poor
+        {"x": 0.08, "y": 0.25, "text": "<b style='color:#FF4444'>Poor</b><br><span style='font-size:10px'>&lt; 40</span>", "color": "#FF4444"},
+        # Fair  
+        {"x": 0.23, "y": 0.45, "text": "<b style='color:#FF69B4'>Fair</b><br><span style='font-size:10px'>40-60</span>", "color": "#FF69B4"},
+        # Good - Made darker and bolder for better contrast
+        {"x": 0.5, "y": 0.6, "text": "<b style='color:#8B4513; font-weight:900'>Good</b><br><span style='font-size:10px; color:#8B4513'>60-70</span>", "color": "#8B4513"},
+        # Very Good - Made darker for better contrast
+        {"x": 0.77, "y": 0.45, "text": "<b style='color:#B8860B; font-weight:900'>Very Good</b><br><span style='font-size:10px; color:#B8860B'>70-80</span>", "color": "#B8860B"},
+        # Excellent
+        {"x": 0.92, "y": 0.25, "text": "<b style='color:#00C851'>Excellent</b><br><span style='font-size:10px'>&gt; 80</span>", "color": "#00C851"}
+    ]
+    
+    for ann in annotations:
+        fig.add_annotation(
+            x=ann["x"], y=ann["y"], 
+            text=ann["text"], 
+            showarrow=False,
+            font=dict(size=12, family="Google Sans, Arial", weight="bold"),
+            align="center",
+            xref="paper",
+            yref="paper"
+        )
+    
+    # Add title at the bottom
+    fig.add_annotation(
+        x=0.5, y=-0.05,
+        text=f"<b style='font-size:18px; color:#e8eaed'>{title}</b>",
+        showarrow=False,
+        font=dict(family="Google Sans, Arial"),
+        align="center",
+        xref="paper",
+        yref="paper"
+    )
+    
+    # Add background gradient effect
     fig.update_layout(
-        height=250,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(48,49,52,0)",
-        font={'color': '#e8eaed', 'family': "Google Sans, Arial"}
+        height=280,
+        margin=dict(l=20, r=20, t=30, b=50),
+        paper_bgcolor="rgba(32, 33, 36, 0)",
+        plot_bgcolor="rgba(32, 33, 36, 0)",
+        font={'color': '#e8eaed', 'family': "Google Sans, Arial"},
+        showlegend=False
     )
     return fig
 
@@ -916,13 +1034,45 @@ def handle_file_uploads():
             with st.container():
                 st.markdown("##### 📎 Required Documents")
                 pitch_deck = st.file_uploader(
-                    "Pitch Deck (PDF)",
-                    type=["pdf"],
+                    "Pitch Deck (PDF/DOC/PPT/Audio/Video)",
+                    type=["pdf", "doc", "docx", "ppt", "pptx", "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "m4a", "ogg"],
                     key="pitch_deck_manual",
-                    help="Upload your startup's pitch deck in PDF format"
+                    help="Upload your startup's pitch deck - supports PDF, DOC, PPT, Audio, and Video formats"
                 )
                 if pitch_deck:
                     st.success(f"✅ {pitch_deck.name} uploaded")
+                
+                # OR divider
+                st.markdown("""
+                <div style='text-align: center; margin: 20px 0; position: relative;'>
+                    <hr style='border: none; border-top: 1px solid #5f6368; margin: 0;'>
+                    <span style='position: absolute; top: -12px; left: 50%; transform: translateX(-50%); 
+                                background: #202124; padding: 0 15px; color: #9aa0a6; font-weight: 500;'>
+                        OR
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Google Form button
+                st.markdown("##### 📝 Submit via Google Form")
+                
+                # Replace with your actual Google Form URL
+                google_form_url = "https://forms.google.com/your-form-id"
+                
+                # Create a styled link button that opens in new tab
+                st.markdown(f"""
+                <a href="{google_form_url}" target="_blank" style="text-decoration: none;">
+                    <div style="background: {GOOGLE_BLUE}; color: white; padding: 0.5rem 1.5rem; 
+                                border-radius: 4px; text-align: center; font-weight: 500;
+                                font-family: 'Google Sans', Arial, sans-serif; cursor: pointer;
+                                transition: all 0.2s ease; display: block;
+                                box-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                        📋 Open Google Form
+                    </div>
+                </a>
+                """, unsafe_allow_html=True)
+                
+                st.caption("💡 Use Google Form for easier document submission and tracking")
         
         with col2:
             with st.container():
@@ -955,7 +1105,7 @@ def handle_file_uploads():
         - No need to upload files manually
         
         **For Manual Upload:**
-        - Ensure pitch deck is in PDF format
+        - Pitch deck supports multiple formats: PDF, DOC, PPT, Audio, and Video
         - Include founders checklist for comprehensive analysis
         - Add financial documents for better investment insights
         """)
@@ -967,7 +1117,7 @@ def handle_file_uploads():
 # ============================================================================
 def display_metrics(score, flags, recommendations):
     """
-    Display key metrics in executive summary
+    Display key metrics in executive summary with gauge chart - all in one row
     
     Args:
         score: Overall analysis score
@@ -976,55 +1126,80 @@ def display_metrics(score, flags, recommendations):
     """
     st.markdown('<div class="subheader">📊 Executive Summary</div>', unsafe_allow_html=True)
     
-    col1, col2, col3, col4 = st.columns(4)
+    # Create single row layout: speedometer (1/2) and metrics (1/2 split into 4 quarters)
+    gauge_col, metrics_col = st.columns([1, 1])
     
-    with col1:
-        st.metric(
-            "Overall Score",
-            f"{score:.1f}",
-            delta=f"{score - 70:.1f} vs benchmark",
-            delta_color="normal"
-        )
+    # Left half - Speedometer
+    with gauge_col:
+        st.markdown("<h4 style='text-align: center;'>🎯 Investment Readiness Score</h4>", unsafe_allow_html=True)
+        gauge_fig = create_gauge_chart(score, "Startup Investment Rating", 100)
+        st.plotly_chart(gauge_fig, use_container_width=True)
     
-    with col2:
-        # Determine risk level based on score
-        risk_level = "Medium" if 50 < score < 75 else ("Low" if score >= 75 else "High")
-        st.metric(
-            "Risk Level",
-            risk_level,
-            delta=None
-        )
-    
-    with col3:
-        # Count flags properly - handle list of lists format
-        if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
-            flag_count = len(flags[0])  # Count actual risk points
-        elif isinstance(flags, list):
-            flag_count = len(flags)
-        else:
-            flag_count = 0
-            
-        st.metric(
-            "Red Flags",
-            flag_count,
-            delta=None,
-            delta_color="inverse"
-        )
-    
-    with col4:
-        # Count recommendations properly
-        if isinstance(recommendations, str):
-            rec_count = 1 if recommendations.strip() else 0
-        elif isinstance(recommendations, list):
-            rec_count = len([r for r in recommendations if r and len(str(r)) > 5])
-        else:
-            rec_count = 0
+    # Right half - Four metrics in 2x2 grid
+    with metrics_col:
+        # Add vertical spacing to center-align metrics with the gauge
+        st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
         
-        st.metric(
-            "Recommendations",
-            rec_count if rec_count > 0 else "Generated",
-            delta=None
-        )
+        # Top row of metrics
+        metric_col1, metric_col2 = st.columns(2)
+        
+        with metric_col1:
+            st.metric(
+                "📈 Overall Score",
+                f"{score:.1f}",
+                delta=f"{score - 70:.1f} vs benchmark",
+                delta_color="normal"
+            )
+        
+        with metric_col2:
+            # Determine risk level based on score
+            risk_level = "Medium" if 50 < score < 75 else ("Low" if score >= 75 else "High")
+            risk_emoji = "🔴" if risk_level == "High" else ("🟡" if risk_level == "Medium" else "🟢")
+            st.metric(
+                f"{risk_emoji} Risk Level",
+                risk_level,
+                delta=None
+            )
+        
+        # Add spacing between rows for better vertical distribution
+        st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
+        
+        # Bottom row of metrics
+        metric_col3, metric_col4 = st.columns(2)
+        
+        with metric_col3:
+            # Count flags properly - handle list of lists format
+            if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
+                flag_count = len(flags[0])  # Count actual risk points
+            elif isinstance(flags, list):
+                flag_count = len(flags)
+            else:
+                flag_count = 0
+                
+            st.metric(
+                "🚩 Red Flags",
+                flag_count,
+                delta=None,
+                delta_color="inverse"
+            )
+        
+        with metric_col4:
+            # Count recommendations properly
+            if isinstance(recommendations, str):
+                rec_count = 1 if recommendations.strip() else 0
+            elif isinstance(recommendations, list):
+                rec_count = len([r for r in recommendations if r and len(str(r)) > 5])
+            else:
+                rec_count = 0
+            
+            st.metric(
+                "💡 Recommendations",
+                rec_count if rec_count > 0 else "Generated",
+                delta=None
+            )
+    
+    # Add separator after Executive Summary
+    st.markdown("---")
 
 # ============================================================================
 # INSIGHTS DISPLAY SECTION - Enhanced for AI Analyst Platform
@@ -1067,7 +1242,9 @@ def display_insights(flags, recommendations, company_name=None):
                     risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high', 'low revenue']) else "Medium"
                     risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
                     
-                    with st.expander(f"⚠️ Risk {i+1}: {flag_text[:30]}...", expanded=(i < 2)):
+                    # Show more of the flag text in title (up to 60 chars)
+                    title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
+                    with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
                         st.markdown(f"**{flag_text}**")
                         st.markdown(f"📄 {ref_text}")
                         st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
@@ -1083,7 +1260,9 @@ def display_insights(flags, recommendations, company_name=None):
                     risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high']) else "Medium"
                     risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
                     
-                    with st.expander(f"⚠️ Risk {i+1}: {flag_text[:30]}...", expanded=(i < 2)):
+                    # Show more of the flag text in title (up to 60 chars)
+                    title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
+                    with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
                         st.markdown(f"**{flag_text}**")
                         st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
                         st.markdown("**Mitigation:** Review financial metrics and market validation")
@@ -1100,13 +1279,19 @@ def display_insights(flags, recommendations, company_name=None):
     with col2:
         st.markdown("#### 💡 AI Investment Recommendations")
         
-        # Display AI recommendations
+        # Display AI recommendations with proper text formatting
         if recommendations:
             if isinstance(recommendations, str):
-                st.info(recommendations)
+                # Display full recommendation text without truncation
+                rec_text = str(recommendations).strip()
+                # Use container with scrolling for very long text
+                with st.container():
+                    st.info(rec_text)
             elif isinstance(recommendations, list):
-                for rec in recommendations[:3]:
-                    st.info(f"• {rec}")
+                for rec in recommendations[:5]:  # Show up to 5 recommendations
+                    # Display full text for each recommendation
+                    rec_text = str(rec).strip()
+                    st.info(f"• {rec_text}")
             
             # Add focus areas from context
             if analysis_context.get('analysis_focus'):
@@ -1146,9 +1331,14 @@ def main():
         # create_results returns tuple: (df, structured_df, score, flags, recommendations)
         result_tuple = create_results()
         if isinstance(result_tuple, tuple) and len(result_tuple) >= 2:
+            st.session_state.summary_df = result_tuple[0]  # df (startup_extracted_df) is at index 0
             st.session_state.results_df = result_tuple[1]  # structured_df is at index 1
         else:
+            st.session_state.summary_df = pd.DataFrame()
             st.session_state.results_df = pd.DataFrame()
+    
+    if "summary_df" not in st.session_state:
+        st.session_state.summary_df = pd.DataFrame()
     
     if "analysis_progress" not in st.session_state:
         st.session_state.analysis_progress = 0
@@ -1181,7 +1371,7 @@ def main():
             
             if st.button(button_text, use_container_width=True):
                 if pitch_deck is None:
-                    st.error("⚠️ Please select a company or upload a Pitch Deck (PDF)")
+                    st.error("⚠️ Please select a company or upload a Pitch Deck (PDF/DOC/PPT/Audio/Video)")
                 else:
                     with st.spinner(f"🤖 Analyzing {selected_company if selected_company else 'documents'} with GenAI Exchange Platform..."):
                         progress_bar = st.progress(0)
@@ -1246,55 +1436,64 @@ def main():
         # Display top metrics
         display_metrics(score, flags, recommendations)
         
-        # Main content area
-        st.markdown("---")
-        col1, col2 = st.columns([1, 2])
+        # Main content area - First Row
         
-        with col1:
-            st.markdown("##### 🎯 Investment Readiness")
-            gauge_fig = create_gauge_chart(score, "Overall Score", 100)
-            st.plotly_chart(gauge_fig, use_container_width=True)
-            
-            if hasattr(st.session_state, 'summary_df'):
-                st.markdown("##### 📋 Key Metrics")
+        # Create a full-width layout for all visualizations
+        # First row: Key Metrics and Edit Data (expanded)
+        row1_col1, row1_col2 = st.columns([1, 2.5])
+        
+        with row1_col1:
+            st.markdown("##### 📋 Key Metrics")
+            if hasattr(st.session_state, 'summary_df') and not st.session_state.summary_df.empty:
                 st.dataframe(
                     st.session_state.summary_df,
                     use_container_width=True,
-                    hide_index=True
+                    hide_index=True,
+                    height=400
                 )
+            else:
+                st.info("📊 Select a company or upload documents to view metrics")
         
-        with col2:
-            # ALL CHARTS IN TABS - KEEPING ALL 4 TABS
-            tab1, tab2, tab3, tab4 = st.tabs(["📈 Trends", "🎯 Radar", "🔥 Heatmap", "📊 Data"])
-            
-            with tab1:
-                comparison_fig = create_comparison_chart(st.session_state.results_df)
-                st.plotly_chart(comparison_fig, use_container_width=True)
-            
-            with tab2:
-                radar_fig = create_radar_chart(st.session_state.results_df)
-                if radar_fig:
-                    st.plotly_chart(radar_fig, use_container_width=True)
-                else:
-                    st.info("Radar chart requires parameter data")
-            
-            with tab3:
-                heatmap_fig = create_heatmap(st.session_state.results_df)
-                if heatmap_fig:
-                    st.plotly_chart(heatmap_fig, use_container_width=True)
-                else:
-                    st.info("Insufficient data for correlation matrix")
-            
-            with tab4:
-                st.markdown("##### ✏️ Edit Analysis Data")
-                edited_df = st.data_editor(
-                    st.session_state.results_df,
-                    use_container_width=True,
-                    hide_index=False,
-                    num_rows="dynamic",
-                    key="data_editor"
-                )
-                st.session_state.results_df = edited_df
+        with row1_col2:
+            st.markdown("##### 📊 Edit Analysis Data")
+            edited_df = st.data_editor(
+                st.session_state.results_df,
+                use_container_width=True,
+                hide_index=False,
+                num_rows="dynamic",
+                key="data_editor",
+                height=400
+            )
+            st.session_state.results_df = edited_df
+        
+        # Second row - Advanced Analytics visualizations
+        st.markdown("---")
+        st.markdown("### 📊 Advanced Analytics")
+        
+        # Create two columns for visualizations (removed Investment Readiness as it's in Executive Summary)
+        viz_col1, viz_col2 = st.columns([1, 1])
+        
+        with viz_col1:
+            st.markdown("#### 🎯 Multi-Parameter Radar")
+            radar_fig = create_radar_chart(st.session_state.results_df)
+            if radar_fig:
+                st.plotly_chart(radar_fig, use_container_width=True)
+            else:
+                st.info("Radar chart requires parameter data")
+        
+        with viz_col2:
+            st.markdown("#### 🔥 Correlation Heatmap")
+            heatmap_fig = create_heatmap(st.session_state.results_df)
+            if heatmap_fig:
+                st.plotly_chart(heatmap_fig, use_container_width=True)
+            else:
+                st.info("Insufficient data for correlation matrix")
+        
+        # Third row - Performance Analysis (full width)
+        st.markdown("---")
+        st.markdown("### 📈 Performance Analysis")
+        comparison_fig = create_comparison_chart(st.session_state.results_df)
+        st.plotly_chart(comparison_fig, use_container_width=True)
         
         # Insights Section with AI Analysis Context
         st.markdown("---")

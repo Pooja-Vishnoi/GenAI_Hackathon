@@ -1,0 +1,45 @@
+[theme]
+# Primary color for interactive elements
+primaryColor = "#4285F4"
+
+# Background color for the main content area
+backgroundColor = "#202124"
+
+# Background color for sidebar and most interactive widgets
+secondaryBackgroundColor = "#303134"
+
+# Color used for almost all text
+textColor = "#e8eaed"
+
+# Font family for all text in the app
+font = "sans serif"
+
+# Base theme
+base = "dark"
+
+[server]
+# Disable the browser auto-opening
+headless = true
+
+# Enable CORS protection
+enableCORS = true
+
+# Enable XSRF protection
+enableXsrfProtection = true
+
+[browser]
+# Disable gathering usage stats
+gatherUsageStats = false
+
+# Server address
+serverAddress = "localhost"
+
+[runner]
+# Magic commands
+magicEnabled = false
+
+# Install packages automatically
+installTracer = false
+
+# Fix Matplotlib
+fixMatplotlib = true
