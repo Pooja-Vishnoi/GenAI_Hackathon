@@ -128,35 +128,49 @@ def apply_custom_css():
             border-bottom: 2px solid {GOOGLE_BLUE};
         }}
         
-        /* Google-style buttons - forced dark theme */
+        /* Google-style buttons - improved contrast for incognito mode */
         .stButton > button {{
-            background: {GOOGLE_BLUE} !important;
+            background: linear-gradient(135deg, #5a9aff, {GOOGLE_BLUE}) !important;
             background-color: {GOOGLE_BLUE} !important;
-            color: white !important;
-            border: none !important;
-            padding: 0.5rem 1.5rem !important;
-            font-weight: 500 !important;
-            border-radius: 4px !important;
+            color: #ffffff !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            padding: 0.6rem 1.6rem !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
             transition: all 0.2s ease !important;
             font-family: 'Google Sans', Arial, sans-serif !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+            min-height: 42px !important;
         }}
         
         .stButton > button:hover {{
-            background: #1a73e8 !important;
-            background-color: #1a73e8 !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+            background: linear-gradient(135deg, #6ba5ff, #2a85ff) !important;
+            background-color: #2a85ff !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5) !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            transform: translateY(-1px) !important;
+        }}
+        
+        .stButton > button:focus {{
+            outline: 3px solid rgba(66, 133, 244, 0.5) !important;
+            outline-offset: 2px !important;
         }}
         
         /* Secondary/Download buttons */
         .stDownloadButton > button {{
+            background: linear-gradient(135deg, #5a9aff, {GOOGLE_BLUE}) !important;
             background-color: {GOOGLE_BLUE} !important;
-            color: white !important;
-            border: 1px solid {GOOGLE_BLUE} !important;
+            color: #ffffff !important;
+            border: 2px solid rgba(255, 255, 255, 0.2) !important;
+            font-weight: 600 !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
         }}
         
         .stDownloadButton > button:hover {{
-            background-color: #1a73e8 !important;
+            background: linear-gradient(135deg, #6ba5ff, #2a85ff) !important;
+            background-color: #2a85ff !important;
+            transform: translateY(-1px) !important;
         }}
         
         /* File uploader styling */
@@ -177,43 +191,83 @@ def apply_custom_css():
             background: #3c4043;
         }}
         
-        /* Tabs Google style */
+        /* Tabs Google style - improved contrast */
         .stTabs [data-baseweb="tab-list"] {{
-            background: transparent;
+            background: #2a2b2e !important;
             gap: 0;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
         }}
         
         .stTabs [data-baseweb="tab"] {{
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            background: transparent;
-            font-weight: 500;
-            padding: 0.75rem 1.5rem;
+            color: #bdc1c6 !important;
+            border-bottom: 3px solid transparent !important;
+            background: transparent !important;
+            font-weight: 600 !important;
+            padding: 0.75rem 1.5rem !important;
         }}
         
         .stTabs [aria-selected="true"] {{
-            color: {GOOGLE_BLUE};
-            border-bottom: 2px solid {GOOGLE_BLUE};
-            background: transparent;
+            color: #ffffff !important;
+            border-bottom: 3px solid {GOOGLE_BLUE} !important;
+            background: linear-gradient(180deg, transparent, rgba(66, 133, 244, 0.1)) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
         }}
         
-        /* Expander styling */
+        /* Expander styling - improved for recommendations */
         .streamlit-expanderHeader {{
-            background: var(--bg-card);
-            color: var(--text-primary);
+            background: linear-gradient(135deg, #3c4043, #4a4b4e) !important;
+            color: #ffffff !important;
             border-radius: 8px;
-            font-weight: 500;
+            font-weight: 600 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            padding: 0.75rem !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
         }}
         
-        /* Data editor/frame styling */
+        .streamlit-expanderHeader:hover {{
+            background: linear-gradient(135deg, #4a4b4e, #5a5b5e) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }}
+        
+        /* Data editor/frame styling - improved contrast */
         .stDataFrame {{
-            background: var(--bg-card);
+            background: #2a2b2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 6px !important;
         }}
         
         [data-testid="stDataFrame"] {{
-            background: var(--bg-card);
-            color: var(--text-primary);
+            background: #2a2b2e !important;
+            color: #ffffff !important;
+        }}
+        
+        /* Table headers with better contrast */
+        .stDataFrame thead th {{
+            background: linear-gradient(135deg, #3c4043, #4a4b4e) !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid {GOOGLE_BLUE} !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }}
+        
+        /* Table cells with improved readability */
+        .stDataFrame tbody td {{
+            background: #2a2b2e !important;
+            color: #e8eaed !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }}
+        
+        /* Table row hover effect */
+        .stDataFrame tbody tr:hover {{
+            background: #3c4043 !important;
+        }}
+        
+        /* DataFrame container */
+        [data-testid="stDataFrameResizable"] {{
+            background: #2a2b2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 6px !important;
+            padding: 0.5rem !important;
         }}
         
         /* Success alert */
@@ -257,10 +311,61 @@ def apply_custom_css():
             color: var(--text-primary) !important;
         }}
         
-        /* Force all expander content to have dark background */
+        /* Incognito mode specific fixes */
+        @media (prefers-color-scheme: light) {{
+            /* Force dark theme even in light mode preference */
+            html, body, .stApp {{
+                background-color: {GOOGLE_DARK_GRAY} !important;
+                color: #e8eaed !important;
+            }}
+        }}
+        
+        /* Fix for input fields in incognito */
+        input, textarea, select {{
+            background-color: #3c4043 !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }}
+        
+        input:focus, textarea:focus, select:focus {{
+            border-color: {GOOGLE_BLUE} !important;
+            outline: 2px solid rgba(66, 133, 244, 0.3) !important;
+            outline-offset: 1px !important;
+        }}
+        
+        /* Selectbox improved contrast */
+        [data-baseweb="select"] {{
+            background-color: #3c4043 !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }}
+        
+        [data-baseweb="select"] [data-baseweb="select-value-container"] {{
+            color: #ffffff !important;
+        }}
+        
+        /* Metric values with better visibility */
+        [data-testid="metric-container"] [data-testid="metric-value"] {{
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }}
+        
+        /* Force all expander content to have better contrast */
         .streamlit-expanderContent {{
-            background-color: var(--bg-card) !important;
-            color: var(--text-primary) !important;
+            background-color: #2a2b2e !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-top: none !important;
+            border-radius: 0 0 8px 8px !important;
+            padding: 1rem !important;
+        }}
+        
+        /* Ensure recommendation text is readable */
+        .streamlit-expanderContent p,
+        .streamlit-expanderContent span,
+        .streamlit-expanderContent li {{
+            color: #e8eaed !important;
+            line-height: 1.7 !important;
         }}
         
         /* Fix text overflow in recommendations */
@@ -420,10 +525,10 @@ def create_gauge_chart(value, title, max_value=100):
         {"x": 0.08, "y": 0.25, "text": "<b style='color:#FF4444'>Poor</b><br><span style='font-size:10px'>&lt; 40</span>", "color": "#FF4444"},
         # Fair  
         {"x": 0.23, "y": 0.45, "text": "<b style='color:#FF69B4'>Fair</b><br><span style='font-size:10px'>40-60</span>", "color": "#FF69B4"},
-        # Good - Made darker and bolder for better contrast
-        {"x": 0.5, "y": 0.6, "text": "<b style='color:#8B4513; font-weight:900'>Good</b><br><span style='font-size:10px; color:#8B4513'>60-70</span>", "color": "#8B4513"},
-        # Very Good - Made darker for better contrast
-        {"x": 0.77, "y": 0.45, "text": "<b style='color:#B8860B; font-weight:900'>Very Good</b><br><span style='font-size:10px; color:#B8860B'>70-80</span>", "color": "#B8860B"},
+        # Good - High contrast orange
+        {"x": 0.5, "y": 0.6, "text": "<b style='color:#FFA500; font-weight:900; text-shadow: 1px 1px 2px rgba(0,0,0,0.5)'>Good</b><br><span style='font-size:10px; color:#FFA500; text-shadow: 1px 1px 2px rgba(0,0,0,0.5)'>60-70</span>", "color": "#FFA500"},
+        # Very Good - High contrast yellow
+        {"x": 0.77, "y": 0.45, "text": "<b style='color:#FFD700; font-weight:900; text-shadow: 1px 1px 2px rgba(0,0,0,0.5)'>Very Good</b><br><span style='font-size:10px; color:#FFD700; text-shadow: 1px 1px 2px rgba(0,0,0,0.5)'>70-80</span>", "color": "#FFD700"},
         # Excellent
         {"x": 0.92, "y": 0.25, "text": "<b style='color:#00C851'>Excellent</b><br><span style='font-size:10px'>&gt; 80</span>", "color": "#00C851"}
     ]

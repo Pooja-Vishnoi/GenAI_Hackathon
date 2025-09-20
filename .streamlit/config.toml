@@ -1,15 +1,15 @@
 [theme]
-# Primary color for interactive elements
-primaryColor = "#4285F4"
+# Primary color for interactive elements - brighter for better contrast
+primaryColor = "#5a9aff"
 
-# Background color for the main content area
-backgroundColor = "#202124"
+# Background color for the main content area - slightly lighter for better contrast
+backgroundColor = "#1a1b1e"
 
 # Background color for sidebar and most interactive widgets
-secondaryBackgroundColor = "#303134"
+secondaryBackgroundColor = "#2a2b2e"
 
-# Color used for almost all text
-textColor = "#e8eaed"
+# Color used for almost all text - pure white for maximum contrast
+textColor = "#ffffff"
 
 # Font family for all text in the app
 font = "sans serif"
