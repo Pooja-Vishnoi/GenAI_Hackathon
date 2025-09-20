@@ -1056,8 +1056,8 @@ def handle_file_uploads():
                 # Google Form button
                 st.markdown("##### 📝 Submit via Google Form")
                 
-                # Replace with your actual Google Form URL
-                google_form_url = "https://forms.google.com/your-form-id"
+                # AI Startup Founder Initial Screening Questionnaire
+                google_form_url = "https://forms.gle/zpK5mcpSJNhqDqmv5"
                 
                 # Create a styled link button that opens in new tab
                 st.markdown(f"""
@@ -1072,7 +1072,7 @@ def handle_file_uploads():
                 </a>
                 """, unsafe_allow_html=True)
                 
-                st.caption("💡 Use Google Form for easier document submission and tracking")
+                st.caption("💡 Complete the AI Startup Founder Initial Screening Questionnaire")
         
         with col2:
             with st.container():
