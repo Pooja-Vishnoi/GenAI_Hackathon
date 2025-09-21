@@ -348,8 +348,55 @@ class AIStartupUtility:
             'overall_score': overall_score
         }
         return json.dumps(result, indent=4)
-    
-    def derive_insight(self, startup_data, score_data, overall_score_data):
+
+
+
+
+    def calculate_final_score_updated(self, evaluation_data) -> dict:
+        # Define weightages for each parameter
+        weightages = {
+            "Team_Quality": 0.15,
+            "Market_Size": 0.15,
+            "Traction": 0.15,
+            "Financials": 0.10,
+            "Product_Uniqueness": 0.15,
+            "Competitive_Landscape": 0.10,
+            "Business_Model_Clarity": 0.10,
+            "Risk_Factors": 0.10
+        }
+        
+        # Check if evaluation_data is a dict with 'startup_score' key
+        if isinstance(evaluation_data, dict) and "startup_score" in evaluation_data:
+            input_data = evaluation_data["startup_score"]
+        else:
+            input_data = evaluation_data  # Assume it's already the list of parameters
+        
+        # Process input data to add weightage, weighted_score, and benchmark_weighted_score
+        result = []
+        for item in input_data:
+            parameter = item["Parameter"]
+            weight = weightages.get(parameter, 0.10)  # Default weight if not found
+            
+            # Calculate weighted scores
+            weighted_score = item["Score"] * weight
+            benchmark_weighted_score = item["Benchmark_normalized"] * weight
+            
+            # Create new dictionary with all required fields
+            updated_item = {
+                "Parameter": parameter,
+                "Score": item["Score"],
+                "Threshold": item["Threshold"],
+                "Benchmark_normalized": item["Benchmark_normalized"],
+                "Weightage": weight,
+                "Weighted_Score": round(weighted_score, 2),
+                "benchmark_weighted_score": round(benchmark_weighted_score, 2)
+            }
+            result.append(updated_item)
+        
+        # Return the final JSON structure
+        return result
+
+    def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
         
         """Uses gemini api to identify red and green flags and recommendations
         Input: 
@@ -357,7 +404,7 @@ class AIStartupUtility:
         """
         try:
 
-            prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_data)}\n\nHere is the evaluation scores about the startup:\n\n{str(score_data)}\n\nHere is the overall score about the startup:\n\n{str(overall_score_data)}"
+            prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup: The text provided from pitch deck and other documents \n\n{str(uploaded_files_content)}  \n\n The important extracted attributes of company from files {str(startup_extracted_data)} \n\the evaluation scores about the startup:\n\n{str(startup_score_normalized)}\n\nHere is the overall score about the startup:\n\n{str(final_score)} against the benchmark score considering top players in similar category which is final benchmark score: {str(final_benchmark_score)} "
             # Call Gemini API for analysis
             response = client.models.generate_content(
                 model="gemini-2.5-flash", 
@@ -391,20 +438,3 @@ class AIStartupUtility:
     def report_generation(self, startup_data, score_data, overall_score_data, insights_data):
         pass
 
-# if __name__ == "__main__":
-    # analyst = AIStartupUtility()
-    # pdf_path = "Sia - DSA-Pitch deck_V1-INR.pdf"
-    # text_data = analyst.extract_text_from_pdf(pdf_path)
-    # print(text_data)
-
-    # structured_company_info = analyst.get_company_json_from_gemini(pitch_deck_content=str(text_data), call_transcript="", founder_updates="", email_content="")
-    # print(structured_company_info)
-
-    # startup_score = analyst.startup_evaluation(structured_company_info)
-    # print(startup_score)
-
-    # overall_score = analyst.calculate_final_score(startup_score)
-    # print(overall_score)
-
-    # insight_data = analyst.derive_insight(structured_company_info, startup_score, overall_score)
-    # print(insight_data)

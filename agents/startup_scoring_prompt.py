@@ -1,119 +1,107 @@
 STARTUP_SCORING_PROMPT = """
-please evaluate the startup based on the following 10 parameters, scoring each from 1 to 10, and provide a brief justification for each score. Return ONLY a valid JSON object with these fields:
+Please evaluate the startup based on the following 8 parameters, assigning each an integer score from 1 to 10. Use publicly available data and industry context to inform your evaluation. Return a valid JSON object with the specified structure.
 
+**Evaluation Criteria**:
 
-Evaluation criteria:
+- **Team Quality**: Assess the founding team's experience, skills, cohesion, and ability to execute the startup's vision.
+  - Low (1-3): Inexperienced team, lacking critical skills or cohesion.
+  - Moderate (4-6): Some relevant experience, with identifiable strengths but gaps in expertise.
+  - High (7-10): Highly experienced, cohesive team with a proven track record and strong execution capability.
+
+- **Market Size**: Evaluate the target market's size, growth potential, and scalability.
+  - Low (1-3): Small or stagnant market with limited growth potential.
+  - Moderate (4-6): Moderately sized market with reasonable growth prospects.
+  - High (7-10): Large, rapidly growing market with significant scalability.
+
+- **Traction**: Measure the startup's momentum through customer acquisition, revenue, or other growth metrics.
+  - Low (1-3): Minimal or no traction, very early stage with limited evidence of progress.
+  - Moderate (4-6): Demonstrable traction with early adopters or consistent growth metrics.
+  - High (7-10): Strong traction with significant customer base, revenue, or rapid growth.
+
+- **Financials**: Review the startup's financial health, runway, revenue generation, and fundraising success.
+  - Low (1-3): Weak financials, short runway, or negligible revenue.
+  - Moderate (4-6): Stable financials with some fundraising success but uncertain revenue streams.
+  - High (7-10): Robust financial position, strong revenue, and sufficient funding.
+
+- **Product Uniqueness**: Assess the innovation, differentiation, and problem-solving impact of the product or service.
+  - Low (1-3): Generic product with little differentiation or problem-solving value.
+  - Moderate (4-6): Some innovative features but overlaps with existing solutions.
+  - High (7-10): Highly innovative, solving critical pain points with clear differentiation.
+
+- **Competitive Landscape**: Evaluate the startup's position relative to competitors and barriers to entry.
+  - Low (1-3): Highly competitive market with no clear advantage.
+  - Moderate (4-6): Moderate competition with potential for differentiation.
+  - High (7-10): Limited competition, strong differentiation, or high barriers to entry.
+
+- **Business Model Clarity**: Analyze the clarity, scalability, and sustainability of the business model.
+  - Low (1-3): Unclear or unsustainable business model with weak revenue streams.
+  - Moderate (4-6): Clear but evolving model with moderate scalability.
+  - High (7-10): Well-defined, scalable, and sustainable model with strong revenue potential.
+
+- **Risk Factors**: Assess market, operational, financial, technological, regulatory, and scalability risks.
+  - Low (1-3): High risks with minimal mitigation strategies.
+  - Moderate (4-6): Moderate risks with some mitigation plans in place.
+  - High (7-10): Low risks or robust mitigation strategies ensuring stability.
+
+**Scoring Guidelines**:
+- **Score**: Assign an integer (1-10) based on the startup's performance for each parameter, using the provided criteria.
+- **Threshold**: Set an integer (1-10) representing the minimum score required to be competitive in the industry, based on industry standards and competition.
+- **Benchmark_normalized**: Assign an integer (1-10) based on the performance of the top 3 competitors in the same category. For example, if top competitors have founders from elite institutions or serial entrepreneurs, set a high benchmark (7-10) for Team Quality and score the startup lower if it lacks similar credentials.
+
+**Output Format**:
+Return a valid JSON object structured as follows:
 
 {
-  "parameters": [
+  "startup_score": [
     {
-      "name": "Sector",
-      "description": "Evaluate the attractiveness of the sector based on growth potential, relevance to current trends, and alignment with broader economic or technological shifts. Use data from 'sector', 'market_analysis' (including growth rate), and 'problem_statement' in the JSON.",
-      "sub_criteria": [
-        "Sector growth rate and maturity",
-        "Alignment with megatrends (e.g., sustainability, AI, health tech)",
-        "Regulatory environment and barriers"
-      ],
-      "scoring_rubric": "1-3: Declining or saturated sector with high barriers; 4-6: Stable sector with moderate growth; 7-10: High-growth sector with favorable trends and low barriers."
+      "Parameter": "Team_Quality",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Team_Quality",
-      "description": "Assess the experience, skills, and track record of the team. Draw from 'team' section including founders, key_members, and advisors. Prioritize relevant industry experience, past successes, and complementary skills.",
-      "sub_criteria": [
-        "Founders' background and expertise",
-        "Key team members' roles and experience",
-        "Advisors' relevance and network",
-        "Team completeness and diversity"
-      ],
-      "scoring_rubric": "1-3: Inexperienced team with gaps in key skills; 4-6: Solid but unproven team; 7-10: Experienced team with proven track record and strong network."
+      "Parameter": "Market_Size",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Market_Size",
-      "description": "Gauge the total addressable market and growth potential. Use 'market_analysis' fields like TAM, SAM, SOM, and market_growth_rate.",
-      "sub_criteria": [
-        "Size of TAM/SAM/SOM",
-        "Market growth rate",
-        "Target market accessibility"
-      ],
-      "scoring_rubric": "1-3: Small or shrinking market; 4-6: Moderate market size with steady growth; 7-10: Large, expanding market with high potential."
+      "Parameter": "Traction",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Traction",
-      "description": "Measure progress and validation. Pull from 'traction' including user_metrics, revenue_metrics, and key_milestones.",
-      "sub_criteria": [
-        "User growth and engagement",
-        "Revenue growth and metrics",
-        "Achievement of milestones"
-      ],
-      "scoring_rubric": "1-3: Minimal traction or stagnation; 4-6: Some growth but inconsistent; 7-10: Strong, accelerating traction with validated metrics."
+      "Parameter": "Financials",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Financials",
-      "description": "Review current and projected financial health. Use 'financials' (revenue, projections, burn_rate, runway) and 'funding_ask'.",
-      "sub_criteria": [
-        "Current revenue and burn rate",
-        "Projected revenue realism",
-        "Runway and funding needs"
-      ],
-      "scoring_rubric": "1-3: Poor financials with short runway; 4-6: Break-even potential but risks; 7-10: Solid financials with long runway and realistic projections."
+      "Parameter": "Product_Uniqueness",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Product_Uniqueness",
-      "description": "Evaluate innovation and differentiation. Based on 'solution_description', 'unique_value_proposition', and 'competition' (competitive_advantages).",
-      "sub_criteria": [
-        "Innovation level and IP protection",
-        "Clear value proposition",
-        "Barrier to adoption"
-      ],
-      "scoring_rubric": "1-3: Commodity product with no differentiation; 4-6: Some uniqueness but easily replicable; 7-10: Highly innovative with strong moats."
+      "Parameter": "Competitive_Landscape",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Competitive_Landscape",
-      "description": "Analyze competitors and advantages. From 'competition' section.",
-      "sub_criteria": [
-        "Number and strength of competitors",
-        "Competitive advantages and moats",
-        "Market positioning"
-      ],
-      "scoring_rubric": "1-3: Highly competitive with dominant players; 4-6: Moderate competition; 7-10: Fragmented market with clear advantages."
+      "Parameter": "Business_Model_Clarity",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     },
     {
-      "name": "Business_Model_Clarity",
-      "description": "Assess scalability and revenue potential. Use 'business_model' (revenue_streams, pricing_strategy, CAC, LTV).",
-      "sub_criteria": [
-        "Clarity of revenue streams",
-        "Scalability and unit economics (CAC vs. LTV)",
-        "Pricing strategy effectiveness"
-      ],
-      "scoring_rubric": "1-3: Unclear or unsustainable model; 4-6: Defined but unproven; 7-10: Clear, scalable model with positive economics."
-    },
-    {
-      "name": "Risk_Factors",
-      "description": "Identify and mitigate risks. From 'risks_and_mitigations' and overall analysis.",
-      "sub_criteria": [
-        "Key risks identified",
-        "Mitigation strategies",
-        "Overall risk level"
-      ],
-      "scoring_rubric": "1-3: High unmitigated risks; 4-6: Some risks with partial mitigations; 7-10: Low risks with strong mitigations."
+      "Parameter": "Risk_Factors",
+      "Score": <1-10>,
+      "Threshold": <1-10>,
+      "Benchmark_normalized": <1-10>
     }
   ]
-}
-
-
-Finally return a JSON object structured as follows:
-
-{
-  "scores": {
-    "Sector": {"score": int, "justification": str},
-    "Team_Quality": {"score": int, "justification": str},
-    "Market_Size": {"score": int, "justification": str},
-    "Traction": {"score": int, "justification": str},                                    
-    "Financials": {"score": int, "justification": str},
-    "Product_Uniqueness": {"score": int, "justification": str},
-    "Competitive_Landscape": {"score": int, "justification": str},
-    "Business_Model_Clarity": {"score": int, "justification": str},
-    "Risk_Factors": {"score": int, "justification": str}
 }
 
 """
