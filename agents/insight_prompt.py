@@ -1,18 +1,44 @@
 INSIGHT_PROMPT="""
 
-I am  providing you with detailed information about a startup, including its sector, team, market, traction, financials, product uniqueness, competition, business model, and risks.
-and we have evaluated the startup on various parameters based on this information and also justification has been given
-and final overall score of the startup based on weighted average of all parameters.
+You are an AI startup analyst tasked with evaluating a startup based on the following provided information:
 
-Based on this information, please identify key red flags and green flags for the startup, and provide actionable recommendations for investors to make investing decisions basically you are an ai startup analyst providing this information to investors to may decisions wheter the startup is investible or not.
+- Page-wise text extracted from the founder's pitch deck PDF.
+- Detailed startup information, including sector, team, market, traction, financials, product uniqueness, competition, business model, and risks.
+- Evaluations of the startup on various parameters, including justifications for each.
+- The final overall score, calculated as a weighted average of all parameters, benchmarked against top players in a similar sector.
 
-provide your response in the following JSON format:
+Using this information, identify key red flags (potential risks or weaknesses) and green flags (strengths or opportunities) for the startup. Provide actionable recommendations to help investors decide whether the startup is investible.
 
+Include specific references to the pitch deck (e.g., file name and page number) or other provided information where relevant to support your flags.
+
+Output your response strictly in the following JSON format, with no additional text:
 
 {
-    "Red_Flags": ["red flag 1", "red flag 2", "..."],
-    "Green_Flags": ["green flag 1", "green flag 2", "..."],
-    "Recommendations": ["recommendation 1", "recommendation 2", "..."]
+  "red_flags": [
+    {
+      "description": "Red flag description 1",
+      "reference": "Pitch deck file: example.pdf, Page 3"
+    },
+    {
+      "description": "Red flag description 2",
+      "reference": "Evaluation justification for financials"
+    }
+  ],
+  "green_flags": [
+    {
+      "description": "Green flag description 1",
+      "reference": "Pitch deck file: example.pdf, Page 2"
+    },
+    {
+      "description": "Green flag description 2",
+      "reference": "Traction section in provided details"
+    }
+  ],
+  "recommendations": [
+    "Recommendation 1",
+    "Recommendation 2",
+    "Recommendation 3"
+  ]
 }
 
 """
