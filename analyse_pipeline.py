@@ -3,11 +3,19 @@ from Utils.utils import read_files, read_file
 from Utils.pdf_file_reader import content_to_json
 from Utils.structured_2_scored_data import convert_raw_to_structured
 from Utils.final_score import final_score
-
+import logging
 import os
 import json
 with open(os.path.join(os.path.dirname(__file__), "config.json")) as f:
     config = json.load(f)
+
+
+from Utils.ai_startup_utility import AIStartupUtility
+
+
+# Setting up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = config.get("gemini_model", "gemini-2.0-flash")
 TEMPERATURE = config.get("temperature", 0.7)
@@ -15,7 +23,64 @@ MAX_OUTPUT_TOKENS = config.get("max_output_tokens", 500)
 
 from agents.investor_agent import investor_recommendation_agent, investor_recommendation_executor
 
-def create_results(uploaded_files = None):
+# def create_results(uploaded_files = None):
+#     df = pd.DataFrame()
+#     structured_df = pd.DataFrame()
+#     final_score = 0.0
+#     flags = {}
+#     Recommendations = {}
+
+#     if uploaded_files:
+
+#         try:
+#             uploaded_files_content = read_files(uploaded_files)  
+#             print(f"The content of uploaded files are: {uploaded_files_content}")
+#         except Exception as e:
+#             print(e)
+
+#         try:
+#             startup_extracted_data = content_to_json(content=uploaded_files_content)
+#             print(f"The Extracted data from gemini is: {startup_extracted_data}")
+#         except Exception as e:
+#             print(e)
+
+#         # Move all details from json to dataframe to populate on dashboard
+#         startup_extracted_df = pd.DataFrame(list(startup_extracted_data.items()), columns=["Parameters", "Details"])
+
+#         print(startup_extracted_df)
+
+#         # for further processing we will keep only evaluating parameters and remove others like startup name, sector etc
+#         df = startup_extracted_df.copy()
+#         df = df[~df["Parameters"].isin(["Startup", "Sector"])].reset_index(drop=True)
+
+#         # Score each parameter between 1 to 10 based on some defined logic, 
+#         # pull benchmark data from bigquery for this sector and add here
+#         # add weightage and threshold in df
+#         structured_df = convert_raw_to_structured(df)
+#         print(structured_df)
+
+#         # Convert normalized scores to weighted scores based on weightage of each parameter
+#         structured_df["Weighted_Score"] = structured_df["Score"] * structured_df["Weightage"]
+
+#         # Final weighted score
+#         final_score = structured_df["Weighted_Score"].sum()
+#         print(structured_df)
+#         print(round(final_score, 2))
+
+#         # Identify Red Flags
+#         red_flags = detect_red_flags(structured_df)
+#         green_flags = detect_green_flags(structured_df)
+
+#         # Generate recommendations
+#         Recommendations = generate_recommendations(structured_df, red_flags, green_flags)
+
+#     else: 
+#         print("not uploaded files")
+#     """Create dummy results dataframe with 10 rows × 5 columns"""
+
+#     return df, structured_df, final_score, flags, Recommendations
+
+def create_results(uploaded_files=None):
     df = pd.DataFrame()
     structured_df = pd.DataFrame()
     final_score = 0.0
@@ -23,62 +88,102 @@ def create_results(uploaded_files = None):
     Recommendations = {}
 
     if uploaded_files:
-
         try:
-            uploaded_files_content = read_files(uploaded_files)  
-            print(f"The content of uploaded files are: {uploaded_files_content}")
+            logger.info("Attempting to read uploaded files...")
+            uploaded_files_content = read_files(uploaded_files)
+            logger.info(f"Successfully read the uploaded files: {uploaded_files_content}")
         except Exception as e:
-            print(e)
+            logger.error(f"Error reading uploaded files: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
         try:
+            logger.info("Converting content to JSON...")
             startup_extracted_data = content_to_json(content=uploaded_files_content)
-            print(f"The Extracted data from gemini is: {startup_extracted_data}")
+            logger.info(f"Extracted data from Gemini: {startup_extracted_data}")
         except Exception as e:
-            print(e)
+            logger.error(f"Error extracting content from Gemini: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
         # Move all details from json to dataframe to populate on dashboard
-        startup_extracted_df = pd.DataFrame(list(startup_extracted_data.items()), columns=["Parameters", "Details"])
+        try:
+            logger.info("Converting extracted data to DataFrame...")
+            startup_extracted_df = pd.DataFrame(list(startup_extracted_data.items()), columns=["Parameters", "Details"])
+            logger.debug(f"Extracted DataFrame: {startup_extracted_df}")
+        except Exception as e:
+            logger.error(f"Error converting extracted data to DataFrame: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
-        print(startup_extracted_df)
+        # Filter and reset DataFrame
+        try:
+            logger.info("Processing DataFrame to filter evaluation parameters...")
+            df = startup_extracted_df.copy()
+            df = df[~df["Parameters"].isin(["Startup", "Sector"])].reset_index(drop=True)
+            logger.debug(f"Filtered DataFrame: {df}")
+        except Exception as e:
+            logger.error(f"Error processing DataFrame: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
-        # for further processing we will keep only evaluating parameters and remove others like startup name, sector etc
-        df = startup_extracted_df.copy()
-        df = df[~df["Parameters"].isin(["Startup", "Sector"])].reset_index(drop=True)
+        # Convert to structured data
+        try:
+            logger.info("Converting raw data to structured data...")
+            # structured_df = convert_raw_to_structured(df)
+            ai_startup_utility_obj =AIStartupUtility()
+            startup_score  = ai_startup_utility_obj.startup_evaluation(startup_extracted_data)
+            logger.info(f"startup score: {startup_score}")
+            startup_score_normalized=ai_startup_utility_obj.calculate_final_score_updated(startup_score)
+            print(startup_score_normalized)
 
-        # Score each parameter between 1 to 10 based on some defined logic, 
-        # pull benchmark data from bigquery for this sector and add here
-        # add weightage and threshold in df
-        structured_df = convert_raw_to_structured(df)
-        print(structured_df)
+            structured_df= pd.DataFrame(startup_score_normalized)
+            print(structured_df)
 
-        # Convert normalized scores to weighted scores based on weightage of each parameter
-        structured_df["Weighted_Score"] = structured_df["Score"] * structured_df["Weightage"]
+            # structured_df = convert_raw_to_structured(df)
+            # print(structured_df)
 
-        # Final weighted score
-        final_score = structured_df["Weighted_Score"].sum()
-        print(structured_df)
-        print(round(final_score, 2))
+            logger.info(f"Structured DataFrame: {structured_df}")
+        except Exception as e:
+            logger.error(f"Error converting raw data to structured data: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
-        # Identify Red Flags
-        red_flags = detect_red_flags(structured_df)
-        green_flags = detect_green_flags(structured_df)
+        # Calculate weighted score
+        try:
+            logger.info("Calculating weighted scores...")
+            structured_df["Weighted_Score"] = structured_df["Score"] * structured_df["Weightage"]
+            final_score = structured_df["Weighted_Score"].sum()
+            logger.info(f"Final weighted score calculated: {round(final_score, 2)}")
+            final_benchmark_score = structured_df["benchmark_weighted_score"].sum()
+            logger.info(f"Final weighted score calculated: {round(final_benchmark_score, 2)}")
+        except Exception as e:
+            logger.error(f"Error calculating weighted score: {e}")
+            return df, structured_df, final_score, flags, Recommendations
+
+        # Identify Red Flags and Green Flags
+        try:
+            logger.info("Detecting red and green flags...")
+            red_flags = detect_red_flags(structured_df)
+            green_flags = detect_green_flags(structured_df)
+            logger.info(f"Red Flags: {red_flags}")
+            logger.info(f"Green Flags: {green_flags}")
+            ai_startup_utility_obj =AIStartupUtility()
+            flags = ai_startup_utility_obj.derive_insight(uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score)
+            logger.info(f"flags: {flags}")
+        except Exception as e:
+            logger.error(f"Error detecting flags: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
         # Generate recommendations
-        Recommendations = generate_recommendations(structured_df, red_flags, green_flags)
+        try:
+            logger.info("Generating recommendations...")
+            Recommendations = generate_recommendations(structured_df, red_flags, green_flags)
+            logger.info(f"Recommendations generated: {Recommendations}")
+        except Exception as e:
+            logger.error(f"Error generating recommendations: {e}")
+            return df, structured_df, final_score, flags, Recommendations
 
-    else: 
-        print("not uploaded files")
-    """Create dummy results dataframe with 10 rows × 5 columns"""
+    else:
+        logger.warning("No uploaded files provided.")
 
     return df, structured_df, final_score, flags, Recommendations
-    # return df, pd.DataFrame({
-    #     "Column 1": [i+1 for i in range(10)],       # numeric values for chart
-    #     "Column 2": [(i+1)*2 for i in range(10)],   # numeric values for chart
-    #     "Column 3": [f"Val {i+1}-3" for i in range(10)],
-    #     "Column 4 (Editable)": [f"Edit {i+1}-4" for i in range(10)],
-    #     "Column 5 (Editable)": [f"Edit {i+1}-5" for i in range(10)],
-    # }
-    # )
+
 
 def recalculate_results(df):
     """

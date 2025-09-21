@@ -1,8 +1,11 @@
 """
 
+
 install required packages:
 
+
 pip install pymupdf pytesseract Pillow pandas pdfplumber PyPDF2 google-genai python-dotenv
+
 
 """
 
@@ -17,19 +20,18 @@ import pdfplumber
 from PyPDF2 import PdfReader
 from google import genai
 from dotenv import load_dotenv
-from agents.attribute_extraction_prompt import ATTRIBUTE_EXTRACTION_PROMPT
-from agents.startup_scoring_prompt import STARTUP_SCORING_PROMPT
-from agents.insight_prompt import INSIGHT_PROMPT
+from prompts.attribute_extraction_prompt import ATTRIBUTE_EXTRACTION_PROMPT
+from prompts.startup_scoring_prompt import STARTUP_SCORING_PROMPT
+from prompts.insight_prompt import INSIGHT_PROMPT
+
 import json
-
-
-load_dotenv(dotenv_path="agents/.env")
+load_dotenv()
 
 # Initialize Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-class AIStartupUtility:
+class AIStartupAnalyst:
 
     def __init__(self):
         pass
@@ -223,7 +225,7 @@ class AIStartupUtility:
                 return [{"page_no": 1, "extracted_text": "Not available", "extracted_text_from_image": "Not available", "extracted_tabular_data": "Not available"}]
 
         
-    def get_company_json_from_gemini(self, company_document=""):
+    def get_company_json_from_gemini(self, pitch_deck_content="", call_transcript="", founder_updates="", email_content=""):
 
         """Uses gemini api to get important startup details in json format
         Input: [{"page_no": 1, "extracted_text": "text from page 1", "extracted_text_from_image": "image text from page 1", "extracted_tabular_data": "table data from page 1"}, {...}]
@@ -231,7 +233,7 @@ class AIStartupUtility:
         """
         try:
 
-            prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the startup's document: {company_document} provide the JSON output as specified."
+            prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the pitch deck or business document:\n\n{pitch_deck_content}\n\n{call_transcript}\n\n{founder_updates}\n\n{email_content}\n\nPlease provide the JSON output as specified."
             # Call Gemini API for analysis
             response = client.models.generate_content(
                 model="gemini-2.5-flash", 
@@ -348,55 +350,8 @@ class AIStartupUtility:
             'overall_score': overall_score
         }
         return json.dumps(result, indent=4)
-
-
-
-
-    def calculate_final_score_updated(self, evaluation_data) -> dict:
-        # Define weightages for each parameter
-        weightages = {
-            "Team_Quality": 0.15,
-            "Market_Size": 0.15,
-            "Traction": 0.15,
-            "Financials": 0.10,
-            "Product_Uniqueness": 0.15,
-            "Competitive_Landscape": 0.10,
-            "Business_Model_Clarity": 0.10,
-            "Risk_Factors": 0.10
-        }
-        
-        # Check if evaluation_data is a dict with 'startup_score' key
-        if isinstance(evaluation_data, dict) and "startup_score" in evaluation_data:
-            input_data = evaluation_data["startup_score"]
-        else:
-            input_data = evaluation_data  # Assume it's already the list of parameters
-        
-        # Process input data to add weightage, weighted_score, and benchmark_weighted_score
-        result = []
-        for item in input_data:
-            parameter = item["Parameter"]
-            weight = weightages.get(parameter, 0.10)  # Default weight if not found
-            
-            # Calculate weighted scores
-            weighted_score = item["Score"] * weight
-            benchmark_weighted_score = item["Benchmark_normalized"] * weight
-            
-            # Create new dictionary with all required fields
-            updated_item = {
-                "Parameter": parameter,
-                "Score": item["Score"],
-                "Threshold": item["Threshold"],
-                "Benchmark_normalized": item["Benchmark_normalized"],
-                "Weightage": weight,
-                "Weighted_Score": round(weighted_score, 2),
-                "benchmark_weighted_score": round(benchmark_weighted_score, 2)
-            }
-            result.append(updated_item)
-        
-        # Return the final JSON structure
-        return result
-
-    def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
+    
+    def derive_insight(self, startup_data, score_data, overall_score_data):
         
         """Uses gemini api to identify red and green flags and recommendations
         Input: 
@@ -404,7 +359,7 @@ class AIStartupUtility:
         """
         try:
 
-            prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup: The text provided from pitch deck and other documents \n\n{str(uploaded_files_content)}  \n\n The important extracted attributes of company from files {str(startup_extracted_data)} \n\the evaluation scores about the startup:\n\n{str(startup_score_normalized)}\n\nHere is the overall score about the startup:\n\n{str(final_score)} against the benchmark score considering top players in similar category which is final benchmark score: {str(final_benchmark_score)} "
+            prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_data)}\n\nHere is the evaluation scores about the startup:\n\n{str(score_data)}\n\nHere is the overall score about the startup:\n\n{str(overall_score_data)}"
             # Call Gemini API for analysis
             response = client.models.generate_content(
                 model="gemini-2.5-flash", 
@@ -438,3 +393,20 @@ class AIStartupUtility:
     def report_generation(self, startup_data, score_data, overall_score_data, insights_data):
         pass
 
+if __name__ == "__main__":
+    analyst = AIStartupAnalyst()
+    pdf_path = "data/presentation_04_05.pdf"
+    text_data = analyst.extract_text_from_pdf(pdf_path)
+    print(text_data)
+
+    structured_company_info = analyst.get_company_json_from_gemini(pitch_deck_content=str(text_data), call_transcript="", founder_updates="", email_content="")
+    print(structured_company_info)
+
+    startup_score = analyst.startup_evaluation(structured_company_info)
+    print(startup_score)
+
+    overall_score = analyst.calculate_final_score(startup_score)
+    print(overall_score)
+
+    insight_data = analyst.derive_insight(structured_company_info, startup_score, overall_score)
+    print(insight_data)
