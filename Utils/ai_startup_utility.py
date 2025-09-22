@@ -6,6 +6,9 @@ pip install pymupdf pytesseract Pillow pandas pdfplumber PyPDF2 google-genai pyt
 
 """
 
+import logging
+logger = logging.getLogger()
+
 
 import fitz  
 import pytesseract  
@@ -22,11 +25,12 @@ from agents.startup_scoring_prompt import STARTUP_SCORING_PROMPT
 from agents.insight_prompt import INSIGHT_PROMPT
 import json
 
-
 load_dotenv(dotenv_path="agents/.env")
 
 # Initialize Gemini client
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+key = os.getenv("GOOGLE_API_KEY")
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
 
 
 class AIStartupUtility:
@@ -43,11 +47,15 @@ class AIStartupUtility:
         text_data = []
         image_data = []
         table_data = []
+
+        logger.info(f"Extracting text from PDF: {pdf_path}")
         
         try:
             # Open the PDF file using PyMuPDF
+            logger.info("Opening PDF with PyMuPDF")
+            logger.info(f"Pdf path: {pdf_path}")
             doc = fitz.open(pdf_path)
-            
+            logger.info(f"Number of pages in PDF: {len(doc)}")
             for page_num in range(len(doc)):
                 page = doc.load_page(page_num)
                 page_key = f"Page {page_num + 1}"
@@ -60,7 +68,9 @@ class AIStartupUtility:
                 
                 # Extract text from the page
                 blocks = page.get_text("blocks")
+                logger.info("blockes - Extracting text from page {page_num + 1}")
                 page_text = "\n".join([block[4].strip() for block in blocks if block[6] == 0])  # Text only, skip images
+                logger.info("length of text extracted - {len(page_text)}")
                 if page_text.strip():
                     page_dict["extracted_text"] = page_text
                     text_data.append({"Page": page_key, "Text": page_text})
@@ -88,6 +98,7 @@ class AIStartupUtility:
                         except Exception as e:
                             print(f"Error processing image {img_index + 1} on page {page_num + 1}: {str(e)}")
                     if image_texts:
+                        logger.info("Extracting text from images on page {page_num + 1}")
                         page_dict["extracted_text_from_image"] = "\n".join(image_texts)
                 
                 # Append page dictionary to result
@@ -280,6 +291,7 @@ class AIStartupUtility:
 
             prompt=f"{STARTUP_SCORING_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_important_details_json)}"
             # Call Gemini API for analysis
+
             response = client.models.generate_content(
                 model="gemini-2.5-flash", 
                 contents=prompt

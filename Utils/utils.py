@@ -6,6 +6,9 @@ import os
 from docx import Document
 
 
+import logging
+logger = logging.getLogger() 
+
 
 def read_file(uploaded_file):
     """
@@ -14,6 +17,7 @@ def read_file(uploaded_file):
     :param uploaded_file: streamlit UploadedFile object
     :return: extracted text as string
     """
+    logger.info("Starting to read files... 11")
     filename = uploaded_file.name
     ext = os.path.splitext(filename)[1].lower()
     text = ""
@@ -21,12 +25,20 @@ def read_file(uploaded_file):
 
     if ext == ".pdf":
         try:
-            analyst = AIStartupUtility()
+
+            # temp_path = os.path.join("tmp", filename)
+            # with open(temp_path, "wb") as f:
+            #     f.write(uploaded_file.read())
+            # text_data = analyst.extract_text_from_pdf(temp_path)
             text_data = analyst.extract_text_from_pdf(filename)
-            print(text_data)
+
+            analyst = AIStartupUtility()
+            logger.info("came out of extract_text_from_pdf")
+            logger.info(text_data)
             text =text_data
         except Exception as e:
             text = f"[Error reading PDF file: {e}]"
+            logger.info(e)
 
     elif ext==".docx":
         try:
@@ -34,7 +46,7 @@ def read_file(uploaded_file):
             text = [paragraph.text for paragraph in doc.paragraphs if paragraph.text]
             return '\n'.join(text)
         except Exception as e:
-            print(e)
+            logger.info(e)
             return text
 
     elif ext == ".txt":
@@ -54,9 +66,13 @@ def read_files(uploaded_files):
     :param uploaded_files: list of UploadedFile objects
     :return: dict {filename: text}
     """
+    logger.info("Starting to read files... 111")
+    logger.info(f"Starting to read {len(uploaded_files)} files...")
     results = {}
     for uploaded_file in uploaded_files:
+        logger.info(f"Reading file: {uploaded_file.name}")
         results[uploaded_file.name] = read_file(uploaded_file)
+    logger.info("Completed reading all files.", results)
     return results
 
 

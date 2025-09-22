@@ -28,7 +28,7 @@ import json
 load_dotenv()
 
 # Initialize Gemini client
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 class AIStartupAnalyst:

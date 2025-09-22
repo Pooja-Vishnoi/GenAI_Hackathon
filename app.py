@@ -476,7 +476,7 @@ def create_gauge_chart(value, title, max_value=100):
         number = {
             'suffix': "",
             'font': {'size': 54, 'color': 'white', 'family': 'Google Sans, Arial', 'weight': 'bold'},
-            'valueformat': '.0f'
+            'valueformat': '.2f'
         },
         gauge = {
             'shape': "angular",
@@ -1138,6 +1138,7 @@ def handle_file_uploads():
         with col1:
             with st.container():
                 st.markdown("##### 📎 Required Documents")
+                st.markdown("##### 📎 Try with NaarioDeck2025.pdf for prototype testing")
                 pitch_deck = st.file_uploader(
                     "Pitch Deck (PDF/DOC/PPT/Audio/Video)",
                     type=["pdf", "doc", "docx", "ppt", "pptx", "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "m4a", "ogg"],
@@ -1258,7 +1259,7 @@ def display_metrics(score, flags, recommendations):
         
         with metric_col2:
             # Determine risk level based on score
-            risk_level = "Medium" if 50 < score < 75 else ("Low" if score >= 75 else "High")
+            risk_level = "Medium" if 5 < score < 7.5 else ("Low" if score >= 7.5 else "High")
             risk_emoji = "🔴" if risk_level == "High" else ("🟡" if risk_level == "Medium" else "🟢")
             st.metric(
                 f"{risk_emoji} Risk Level",
@@ -1274,10 +1275,11 @@ def display_metrics(score, flags, recommendations):
         
         with metric_col3:
             # Count flags properly - handle list of lists format
+            
             if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
                 flag_count = len(flags[0])  # Count actual risk points
             elif isinstance(flags, list):
-                flag_count = len(flags)
+                flag_count = len(flags['red_flags'])
             else:
                 flag_count = 0
                 
@@ -1328,58 +1330,70 @@ def display_insights(flags, recommendations, company_name=None):
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown("#### 🚨 Risk Assessment & Red Flags")
+        st.markdown("#### 🚨 Risk Assessment & Flags")
         
         # Display detected risks
         if flags:
-            # Handle both list of lists and single list format
-            if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
-                # flags is [red_flags_points, red_flags_reference]
-                risk_points = flags[0] if isinstance(flags[0], list) else [flags[0]]
-                risk_references = flags[1] if isinstance(flags[1], list) else [flags[1]] if len(flags) > 1 else []
+            st.markdown("##### 🚨 Red Flags")
+            st.json(flags['red_flags'])
+            st.write("-------------------------------------------")
+            st.markdown("##### Green Flags")
+            # st.write(f"----Green Flags--- : {flags['green_flags']}")
+            for i, flag in enumerate(flags['green_flags'], 1):
+                st.markdown(f"**Red Flag {i}:**")
+                st.write(flag)
+
+
+        #     # Handle both list of lists and single list format
+        #     if isinstance(flags, (list, tuple)) and len(flags) >= 2 and isinstance(flags[0], list):
+        #         # flags is [red_flags_points, red_flags_reference]
+        #         risk_points = flags[0] if isinstance(flags[0], list) else [flags[0]]
+        #         risk_references = flags[1] if isinstance(flags[1], list) else [flags[1]] if len(flags) > 1 else []
                 
-                for i, (flag_point, flag_ref) in enumerate(zip(risk_points, risk_references)):
-                    # Convert to string if needed
-                    flag_text = str(flag_point) if not isinstance(flag_point, str) else flag_point
-                    ref_text = str(flag_ref) if not isinstance(flag_ref, str) else flag_ref
+        #         for i, (flag_point, flag_ref) in enumerate(zip(risk_points, risk_references)):
+        #             # Convert to string if needed
+        #             flag_text = str(flag_point) if not isinstance(flag_point, str) else flag_point
+        #             ref_text = str(flag_ref) if not isinstance(flag_ref, str) else flag_ref
                     
-                    # Determine risk level based on flag content
-                    risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high', 'low revenue']) else "Medium"
-                    risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
+        #             # Determine risk level based on flag content
+        #             risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high', 'low revenue']) else "Medium"
+        #             risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
                     
-                    # Show more of the flag text in title (up to 60 chars)
-                    title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
-                    with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
-                        st.markdown(f"**{flag_text}**")
-                        st.markdown(f"📄 {ref_text}")
-                        st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
-                        st.markdown("**Mitigation:** Review financial metrics and market validation")
+        #             # Show more of the flag text in title (up to 60 chars)
+        #             title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
+        #             with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
+        #                 st.markdown(f"**{flag_text}**")
+        #                 st.markdown(f"📄 {ref_text}")
+        #                 st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
+        #                 st.markdown("**Mitigation:** Review financial metrics and market validation")
             
-            elif isinstance(flags, list):
-                # Handle simple list of flags
-                for i, flag in enumerate(flags):
-                    # Convert to string if needed
-                    flag_text = str(flag) if not isinstance(flag, str) else flag
+        #     elif isinstance(flags, list):
+        #         # Handle simple list of flags
+        #         for i, flag in enumerate(flags):
+        #             # Convert to string if needed
+        #             flag_text = str(flag) if not isinstance(flag, str) else flag
                     
-                    # Determine risk level based on flag content
-                    risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high']) else "Medium"
-                    risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
+        #             # Determine risk level based on flag content
+        #             risk_level = "High" if any(word in flag_text.lower() for word in ['critical', 'severe', 'major', 'high']) else "Medium"
+        #             risk_color = GOOGLE_RED if risk_level == "High" else GOOGLE_YELLOW
                     
-                    # Show more of the flag text in title (up to 60 chars)
-                    title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
-                    with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
-                        st.markdown(f"**{flag_text}**")
-                        st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
-                        st.markdown("**Mitigation:** Review financial metrics and market validation")
+        #             # Show more of the flag text in title (up to 60 chars)
+        #             title_text = flag_text if len(flag_text) <= 60 else flag_text[:57] + "..."
+        #             with st.expander(f"⚠️ Risk {i+1}: {title_text}", expanded=(i < 2)):
+        #                 st.markdown(f"**{flag_text}**")
+        #                 st.markdown(f"<span style='color: {risk_color};'>Impact: {risk_level}</span>", unsafe_allow_html=True)
+        #                 st.markdown("**Mitigation:** Review financial metrics and market validation")
         
-        # Add sector-specific risks if available
-        if analysis_context.get('risk_flags'):
-            st.markdown("**🎯 Sector-Specific Risks:**")
-            for risk in analysis_context['risk_flags'][:3]:
-                st.caption(f"• {risk.replace('_', ' ').title()}")
+        # # Add sector-specific risks if available
+        # if analysis_context.get('risk_flags'):
+        #     st.markdown("**🎯 Sector-Specific Risks:**")
+        #     for risk in analysis_context['risk_flags'][:3]:
+        #         st.caption(f"• {risk.replace('_', ' ').title()}")
         
-        if not flags:
-            st.success("✅ No critical risks detected in initial screening")
+        # if not flags:
+        #     st.success("✅ No critical risks detected in initial screening")
+
+
     
     with col2:
         st.markdown("#### 💡 AI Investment Recommendations")
@@ -1436,7 +1450,10 @@ def main():
         # create_results returns tuple: (df, structured_df, score, flags, recommendations)
         result_tuple = create_results()
         if isinstance(result_tuple, tuple) and len(result_tuple) >= 2:
-            st.session_state.summary_df = result_tuple[0]  # df (startup_extracted_df) is at index 0
+            summary_df = result_tuple[0]
+            # summary_df = summary_df[~summary_df["Parameters"].isin(["uploaded_files_content"])].reset_index(drop=True)
+
+            st.session_state.summary_df = summary_df  # df (startup_extracted_df) is at index 0
             st.session_state.results_df = result_tuple[1]  # structured_df is at index 1
         else:
             st.session_state.summary_df = pd.DataFrame()
@@ -1499,7 +1516,15 @@ def main():
                         
                         st.session_state.show_results = True
                         st.session_state.analyzed_company = selected_company
-                        summary_df, results_df, score, flags, recommendations = create_results(uploaded_files)
+                        summary_df, results_df, score, flags, recommendations, uploaded_files_content = create_results(uploaded_files)
+                        # summary_df = startup_extracted_df.copy()
+                        # summary_df = summary_df[~summary_df["Parameters"].isin(["uploaded_files_content"])].reset_index(drop=True)
+
+                        print(" ---------------- flags :", flags)
+
+                        print(f"Results DataFrame:\n{results_df.head()}")
+                        
+                        st.session_state.uploaded_files_content = uploaded_files_content
                         st.session_state.summary_df = summary_df
                         st.session_state.results_df = results_df
                         status_text.empty()
@@ -1532,7 +1557,8 @@ def main():
         
         # Analyze results if DataFrame is not empty
         if not st.session_state.results_df.empty:
-            score, flags, recommendations = analyze_results(st.session_state.results_df)
+            score, flags, recommendations = analyze_results(st.session_state.uploaded_files_content, st.session_state.results_df)
+            print(" --------------L1553-- flags :", flags)
         else:
             score = 0
             flags = []
@@ -1540,7 +1566,7 @@ def main():
         
         # Display top metrics
         display_metrics(score, flags, recommendations)
-        
+    
         # Main content area - First Row
         
         # Create a full-width layout for all visualizations
@@ -1549,6 +1575,7 @@ def main():
         
         with row1_col1:
             st.markdown("##### 📋 Key Metrics")
+
             if hasattr(st.session_state, 'summary_df') and not st.session_state.summary_df.empty:
                 st.dataframe(
                     st.session_state.summary_df,
@@ -1644,7 +1671,7 @@ def main():
         with col1:
             if st.button("🔄 Re-analyze", use_container_width=True):
                 with st.spinner("Recalculating..."):
-                    final_score, flags, recommendations = analyze_results(st.session_state.results_df)
+                    final_score, flags, recommendations = analyze_results(st.session_state.summary_df, st.session_state.results_df)
                     st.session_state.score = final_score
                     st.session_state.flags = flags
                     st.session_state.recommendations = recommendations
