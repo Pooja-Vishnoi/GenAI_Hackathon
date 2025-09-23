@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from Utils.ai_startup_utility3 import AIStartupUtility
+from Utils.ai_startup_utility_improved import AIStartupUtility
 
 # Streamlit App Configuration
 # st.set_page_config(page_title="AI Startup Analyzer", layout="centered")
