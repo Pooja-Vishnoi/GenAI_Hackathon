@@ -28,6 +28,7 @@ class AIStartupUtility:
     def __init__(self):
         pass
 
+
     def extract_text_from_pdf(self, pdf_path):
         """Extract text, image text, and tables from a PDF file, store in Excel, and return data as a list of dictionaries"""
         PDFPLUMBER_AVAILABLE = True  
@@ -58,12 +59,39 @@ class AIStartupUtility:
                 
                 # Extract text from the page
                 blocks = page.get_text("blocks")
-                logger.info("blockes - Extracting text from page {page_num + 1}")
+                logger.info(f"Extracting text from page {page_num + 1}")
                 page_text = "\n".join([block[4].strip() for block in blocks if block[6] == 0])  # Text only, skip images
-                logger.info("length of text extracted - {len(page_text)}")
+                logger.info(f"Length of text extracted: {len(page_text)}")
                 if page_text.strip():
                     page_dict["extracted_text"] = page_text
                     text_data.append({"Page": page_key, "Text": page_text})
+                
+                # If no text is extracted, take a page screenshot and perform OCR
+                if not page_text.strip():
+                    try:
+                        # Render page to an image
+                        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Increase resolution
+                        temp_image_path = f"temp_page_{page_num + 1}.png"
+                        pix.save(temp_image_path)
+                        
+                        # Perform OCR on the page image
+                        img_pil = Image.open(temp_image_path)
+                        ocr_text = pytesseract.image_to_string(img_pil).strip()
+                        
+                        # Delete the temporary image file
+                        if os.path.exists(temp_image_path):
+                            os.remove(temp_image_path)
+                        
+                        if ocr_text and len(ocr_text) > 10:  # Only meaningful text
+                            page_dict["extracted_text_from_image"] = ocr_text
+                            image_data.append({
+                                "Page": page_key,
+                                "Image": f"Page_Screenshot_{page_num + 1}",
+                                "Text": ocr_text
+                            })
+                            logger.info(f"Extracted text from page screenshot on page {page_num + 1}")
+                    except Exception as e:
+                        logger.error(f"Error processing page screenshot on page {page_num + 1}: {str(e)}")
                 
                 # Extract text from images using OCR
                 images = page.get_images(full=True)
@@ -86,9 +114,9 @@ class AIStartupUtility:
                                     "Text": ocr_text
                                 })
                         except Exception as e:
-                            print(f"Error processing image {img_index + 1} on page {page_num + 1}: {str(e)}")
+                            logger.error(f"Error processing image {img_index + 1} on page {page_num + 1}: {str(e)}")
                     if image_texts:
-                        logger.info("Extracting text from images on page {page_num + 1}")
+                        logger.info(f"Extracting text from images on page {page_num + 1}")
                         page_dict["extracted_text_from_image"] = "\n".join(image_texts)
                 
                 # Append page dictionary to result
@@ -126,9 +154,9 @@ class AIStartupUtility:
                                 if table_texts:
                                     result[page_num]["extracted_tabular_data"] = "\n".join(table_texts)
                 except Exception as e:
-                    print(f"Error extracting tables with pdfplumber: {str(e)}. Skipping table extraction.")
+                    logger.error(f"Error extracting tables with pdfplumber: {str(e)}. Skipping table extraction.")
             else:
-                print("Table extraction skipped: pdfplumber not installed.")
+                logger.warning("Table extraction skipped: pdfplumber not installed.")
             
             # Save data to file (Excel if openpyxl available, else CSV)
             output_path = pdf_path.rsplit('.', 1)[0] + '_extracted'
@@ -152,7 +180,7 @@ class AIStartupUtility:
                                 table_df = table["DataFrame"]
                                 sheet_name = f"Table_{idx + 1}"[:31]  # Excel sheet name limit
                                 table_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                    print(f"Data saved to Excel file: {output_path}")
+                    logger.info(f"Data saved to Excel file: {output_path}")
                 else:
                     output_path += '.csv'
                     # Save text data to CSV
@@ -168,15 +196,15 @@ class AIStartupUtility:
                         for idx, table in enumerate(table_data):
                             table_df = table["DataFrame"]
                             table_df.to_csv(output_path.replace('.csv', f'_table_{idx + 1}.csv'), index=False)
-                    print(f"Data saved to CSV files: {output_path.replace('.csv', '_*.csv')}")
+                    logger.info(f"Data saved to CSV files: {output_path.replace('.csv', '_*.csv')}")
             
             except Exception as e:
-                print(f"Error saving data to file: {str(e)}. Data not saved, but extraction completed.")
+                logger.error(f"Error saving data to file: {str(e)}. Data not saved, but extraction completed.")
             
             return result
         
         except Exception as e:
-            print(f"Error processing PDF with PyMuPDF: {str(e)}")
+            logger.error(f"Error processing PDF with PyMuPDF: {str(e)}")
             # Fallback to PyPDF2 if available
             if PYPDF2_AVAILABLE:
                 try:
@@ -196,32 +224,33 @@ class AIStartupUtility:
                             text_data.append({"Page": page_key, "Text": text})
                         result.append(page_dict)
                     
-                    # Save fallback text data
-                    output_path = pdf_path.rsplit('.', 1)[0] + '_extracted'
-                    if text_data:
-                        try:
-                            if OPENPYXL_AVAILABLE:
-                                output_path += '.xlsx'
-                                text_df = pd.DataFrame(text_data)
-                                with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                                    text_df.to_excel(writer, sheet_name='Text', index=False)
-                                print(f"Fallback data saved to Excel file: {output_path}")
-                            else:
-                                output_path += '_text.csv'
-                                text_df = pd.DataFrame(text_data)
-                                text_df.to_csv(output_path, index=False)
-                                print(f"Fallback data saved to CSV file: {output_path}")
-                        except Exception as save_error:
-                            print(f"Error saving fallback data: {str(save_error)}. Data not saved, but extraction completed.")
+                        # Save fallback text data
+                        output_path = pdf_path.rsplit('.', 1)[0] + '_extracted'
+                        if text_data:
+                            try:
+                                if OPENPYXL_AVAILABLE:
+                                    output_path += '.xlsx'
+                                    text_df = pd.DataFrame(text_data)
+                                    with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                                        text_df.to_excel(writer, sheet_name='Text', index=False)
+                                    logger.info(f"Fallback data saved to Excel file: {output_path}")
+                                else:
+                                    output_path += '_text.csv'
+                                    text_df = pd.DataFrame(text_data)
+                                    text_df.to_csv(output_path, index=False)
+                                    logger.info(f"Fallback data saved to CSV file: {output_path}")
+                            except Exception as save_error:
+                                logger.error(f"Error saving fallback data: {str(save_error)}. Data not saved, but extraction completed.")
                     
                     return result
                 
                 except Exception as fallback_error:
-                    print(f"Fallback extraction with PyPDF2 failed: {str(fallback_error)}")
+                    logger.error(f"Fallback extraction with PyPDF2 failed: {str(fallback_error)}")
                     return [{"page_no": 1, "extracted_text": "Not available", "extracted_text_from_image": "Not available", "extracted_tabular_data": "Not available"}]
             else:
-                print("PyPDF2 not available for fallback")
+                logger.warning("PyPDF2 not available for fallback")
                 return [{"page_no": 1, "extracted_text": "Not available", "extracted_text_from_image": "Not available", "extracted_tabular_data": "Not available"}]
+
 
     def extract_text_from_docx(self, docx_path):
         """Extract text from a DOCX file"""
@@ -290,6 +319,7 @@ class AIStartupUtility:
             }
 
 
+            
     def startup_evaluation(self, startup_important_details_json):
         
         """Uses gemini api to evaluate startup based on json input based on 10 parameters
@@ -417,3 +447,5 @@ class AIStartupUtility:
 
     def report_generation(self, startup_data, score_data, overall_score_data, insights_data):
         pass
+
+
