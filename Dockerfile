@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 8080
 
 # Run Streamlit in Cloud Run (port must be 8080)
-CMD ["streamlit", "run", "enhanced_ui.py", "--server.port=8080", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "enhanced_ui_improved.py", "--server.port=8080", "--server.address=0.0.0.0"]
