@@ -5,8 +5,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from Utils.ai_startup_utility_improved import AIStartupUtility
 
-# Streamlit App Configuration
-# st.set_page_config(page_title="AI Startup Analyzer", layout="centered")
+
+
+# Since we're using st.data_editor directly in the main code, we no longer need this function
+
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -140,30 +142,7 @@ st.markdown("""
             hide-caret 2s steps(1, end) forwards;
     }
 }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #1f77b4;
-    }
-    .success-card {
-        background-color: #d4edda;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #28a745;
-    }
-    .warning-card {
-        background-color: #fff3cd;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #ffc107;
-    }
-    .danger-card {
-        background-color: #f8d7da;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #dc3545;
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -175,16 +154,9 @@ st.markdown('<p class="sub-header">Upload a startup pitch deck and generate acti
 # Initialize AIStartupUtility
 utility = AIStartupUtility()
 
-
-
-
-
-
 # Custom CSS for enhanced UI/UX
 st.markdown("""
 <style>
-    /* Global styles */
-
     /* Animated button */
     .questionnaire-button {
         display: inline-block;
@@ -221,6 +193,7 @@ st.markdown("""
         width: 300px;
         height: 300px;
     }
+    }
     /* Tooltip */
     .questionnaire-button[data-tooltip]:hover:after {
         content: attr(data-tooltip);
@@ -242,11 +215,7 @@ st.markdown("""
 
 
 
-    /* Icon styles */
-    .icon {
-        color: #3B82F6;
-        font-size: 20px;
-    }
+
     /* Responsive columns */
     .stColumn > div {
         padding: 10px;
@@ -263,7 +232,6 @@ st.markdown("""
             font-size: 12px;
             color: white;
         }
-
     }
 </style>
 """, unsafe_allow_html=True)
@@ -376,6 +344,10 @@ with button_container:
             </div>
             """, unsafe_allow_html=True)
     
+    # Initialize session state for analysis results
+    if 'analysis_complete' not in st.session_state:
+        st.session_state.analysis_complete = False
+    
     if analyze_clicked and pitch_deck:
         # Save pitch deck temporarily
         temp_pitch_path = "temp_pitch.pdf"
@@ -407,18 +379,35 @@ with button_container:
             if os.path.exists(temp_add_path):
                 os.remove(temp_add_path)
         
+        # Store analysis data in session state
+        st.session_state.all_content = all_content
+        st.session_state.analysis_complete = True
+        
+        # Clean up temporary file
+        if os.path.exists(temp_pitch_path):
+            os.remove(temp_pitch_path)
+
+    # Show tabs if analysis has been completed at least once
+    if st.session_state.analysis_complete and 'all_content' in st.session_state:
         # Tabbed Interface
         tab1, tab2, tab3, tab4 = st.tabs(["Company Details", "Evaluation Scores", "Final Scores", "Insights"])
+        
+        # Get all_content from session state
+        all_content = st.session_state.all_content
     
-        # Tab 1: Company Details
-        with tab1:
+        # Get or calculate company analysis (cached in session state)
+        if 'company_json' not in st.session_state:
             if all_content:
                 with st.spinner("Analyzing company details..."):
                     company_document_str = str(all_content)
-                    company_json = utility.get_company_json_from_gemini(company_document_str)
-                
-                st.subheader("📋 Company Details")
-                if "error" not in company_json:
+                    st.session_state.company_json = utility.get_company_json_from_gemini(company_document_str)
+        
+        company_json = st.session_state.get('company_json', {})
+        
+        # Tab 1: Company Details
+        with tab1:
+            st.subheader("📋 Company Details")
+            if company_json and "error" not in company_json:
                     # Format company details as a table for better readability
                     company_data = {
                         "Field": ["Company Name", "Sector", "Founded", "Team", "Market", "Traction", "Revenue", "Unique Selling Point", "Competition", "Risks"],
@@ -437,93 +426,193 @@ with button_container:
                     }
                     company_df = pd.DataFrame(company_data)
                     st.dataframe(company_df, use_container_width=True, hide_index=True)
-                else:
-                    st.error("Failed to extract company details.")
+            else:
+                st.error("Failed to extract company details.")
     
+        # Get or calculate evaluation data (cached in session state)
+        if 'evaluation_data' not in st.session_state and company_json and "error" not in company_json:
+            with st.spinner("Evaluating startup..."):
+                st.session_state.evaluation_data = utility.startup_evaluation(company_json)
+        
+        evaluation_data = st.session_state.get('evaluation_data', {})
+        
         # Tab 2: Evaluation Scores
         with tab2:
-            if "error" not in company_json:
-                with st.spinner("Evaluating startup..."):
-                    evaluation_data = utility.startup_evaluation(company_json)
+            if evaluation_data and "error" not in evaluation_data:
+                st.subheader("Evaluation Scores")
+                # Convert evaluation data to DataFrame
+                eval_list = evaluation_data.get("startup_score", [])
+                eval_df = pd.DataFrame([
+                    {
+                        "Parameter": item["Parameter"],
+                        "Score": item["Score"],
+                        "Threshold": item["Threshold"],
+                        "Benchmark Normalized": item["Benchmark_normalized"]
+                    } for item in eval_list
+                ])
                 
-                if evaluation_data and "error" not in evaluation_data:
-                    st.subheader("Evaluation Scores")
-                    # Convert evaluation data to DataFrame
-                    eval_list = evaluation_data.get("startup_score", [])
-                    eval_df = pd.DataFrame([
-                        {
-                            "Parameter": item["Parameter"],
-                            "Score": item["Score"],
-                            "Threshold": item["Threshold"],
-                            "Benchmark Normalized": item["Benchmark_normalized"]
-                        } for item in eval_list
-                    ])
-                    
-                    # Display table
-                    st.dataframe(eval_df, use_container_width=True, hide_index=True)
-                    
-                    # Bar Chart for Scores vs Threshold vs Benchmark
-                    fig_bar = px.bar(
-                        eval_df,
-                        x="Parameter",
-                        y=["Score", "Threshold", "Benchmark Normalized"],
-                        barmode="group",
-                        title="Evaluation Scores Comparison",
-                        labels={"value": "Score", "variable": "Metric"},
-                        height=400
-                    )
-                    fig_bar.update_layout(xaxis_title="Parameters", yaxis_title="Scores", legend_title="Metrics")
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                    
-                    # Radar Chart for Scores
-                    fig_radar = go.Figure()
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=eval_df["Score"],
-                        theta=eval_df["Parameter"],
-                        fill="toself",
-                        name="Score"
-                    ))
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=eval_df["Benchmark Normalized"],
-                        theta=eval_df["Parameter"],
-                        fill="toself",
-                        name="Benchmark Normalized"
-                    ))
-                    fig_radar.update_layout(
-                        polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
-                        showlegend=True,
-                        title="Evaluation Scores Radar Chart",
-                        height=400
-                    )
-                    st.plotly_chart(fig_radar, use_container_width=True)
-                    
-                    # Additional Chart: Line Chart for Cumulative Scores
-                    eval_df['Cumulative Score'] = eval_df['Score'].cumsum()
-                    eval_df['Cumulative Benchmark'] = eval_df['Benchmark Normalized'].cumsum()
-                    fig_line = px.line(
-                        eval_df,
-                        x="Parameter",
-                        y=["Cumulative Score", "Cumulative Benchmark"],
-                        title="Cumulative Scores Comparison",
-                        height=400
-                    )
-                    st.plotly_chart(fig_line, use_container_width=True)
-                else:
-                    st.error("Failed to evaluate startup due to invalid evaluation data.")
+                # Display table
+                st.dataframe(eval_df, use_container_width=True, hide_index=True)
+                
+                # Bar Chart for Scores vs Threshold vs Benchmark
+                fig_bar = px.bar(
+                    eval_df,
+                    x="Parameter",
+                    y=["Score", "Threshold", "Benchmark Normalized"],
+                    barmode="group",
+                    title="Evaluation Scores Comparison",
+                    labels={"value": "Score", "variable": "Metric"},
+                    height=400
+                )
+                fig_bar.update_layout(xaxis_title="Parameters", yaxis_title="Scores", legend_title="Metrics")
+                st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # Radar Chart for Scores
+                fig_radar = go.Figure()
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=eval_df["Score"],
+                    theta=eval_df["Parameter"],
+                    fill="toself",
+                    name="Score"
+                ))
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=eval_df["Benchmark Normalized"],
+                    theta=eval_df["Parameter"],
+                    fill="toself",
+                    name="Benchmark Normalized"
+                ))
+                fig_radar.update_layout(
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
+                    showlegend=True,
+                    title="Evaluation Scores Radar Chart",
+                    height=400
+                )
+                st.plotly_chart(fig_radar, use_container_width=True)
+                
+                # Additional Chart: Line Chart for Cumulative Scores
+                eval_df['Cumulative Score'] = eval_df['Score'].cumsum()
+                eval_df['Cumulative Benchmark'] = eval_df['Benchmark Normalized'].cumsum()
+                fig_line = px.line(
+                    eval_df,
+                    x="Parameter",
+                    y=["Cumulative Score", "Cumulative Benchmark"],
+                    title="Cumulative Scores Comparison",
+                    height=400
+                )
+                st.plotly_chart(fig_line, use_container_width=True)
+            else:
+                st.error("Failed to evaluate startup due to invalid evaluation data.")
     
+        # Get or calculate final scores (cached in session state)
+        if 'final_scores' not in st.session_state and evaluation_data and "error" not in evaluation_data:
+            with st.spinner("Calculating weighted scores..."):
+                st.session_state.final_scores = utility.calculate_final_score_updated(evaluation_data)
+        
+        final_scores = st.session_state.get('final_scores', [])
+        
         # Tab 3: Final Weighted Scores
         with tab3:
-            if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
-                with st.spinner("Calculating weighted scores..."):
-                    final_scores = utility.calculate_final_score_updated(evaluation_data)
-                
-                    st.subheader("🏅 Final Weighted Scores")
+            if final_scores:
+                st.subheader("🏅 Final Weighted Scores")
                 final_scores_df = pd.DataFrame(final_scores)
-                st.dataframe(final_scores_df, use_container_width=True, hide_index=True)
+                
+                # Store original data in session state for editing
+                if 'results_df' not in st.session_state:
+                    st.session_state.results_df = final_scores_df.copy()
+                
+                # Add info message about editable columns
+                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Charts update in real-time as you edit. Click **Save Changes** to persist your edits.")
+                
+                # Initialize original scores tracking if not exists
+                if 'original_final_scores' not in st.session_state:
+                    st.session_state.original_final_scores = final_scores_df.copy()
+                
+                # Show changes indicator if data was modified
+                if 'results_df' in st.session_state and 'original_final_scores' in st.session_state:
+                    original_sum = st.session_state.original_final_scores['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.original_final_scores.columns else 0
+                    current_sum = st.session_state.results_df['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.results_df.columns else 0
+                    if abs(original_sum - current_sum) > 0.01:
+                        st.warning(f"⚠️ Modified scores detected. Original total: {original_sum:.2f}, Current total: {current_sum:.2f}")
+                
+                # Create editable data editor with specific column configuration
+                column_config = {}
+                
+                # Configure each column - make Threshold and Weightage editable
+                for col in final_scores_df.columns:
+                    if col.lower() in ['threshold', 'weightage']:
+                        if col.lower() == 'threshold':
+                            column_config[col] = st.column_config.NumberColumn(
+                                label="Threshold",
+                                help="Minimum acceptable score (0-10)",
+                                min_value=0.0,
+                                max_value=10.0,
+                                step=0.1,
+                                format="%.1f"
+                            )
+                        elif col.lower() == 'weightage':
+                            column_config[col] = st.column_config.NumberColumn(
+                                label="Weightage", 
+                                help="Relative importance (0-1)",
+                                min_value=0.0,
+                                max_value=1.0,
+                                step=0.01,
+                                format="%.2f"
+                            )
+                    else:
+                        # Make all other columns read-only
+                        column_config[col] = st.column_config.Column(
+                            label=col,
+                            disabled=True
+                        )
+                
+                # Display editable data editor
+                edited_df = st.data_editor(
+                    st.session_state.results_df,
+                    column_config=column_config,
+                    use_container_width=True,
+                    hide_index=True,
+                    key="final_scores_editor",
+                    num_rows="fixed"
+                )
+                
+                # Create a working copy for calculations (recalculate weighted scores)
+                display_df = edited_df.copy()
+                if 'Weightage' in display_df.columns and 'Score' in display_df.columns:
+                    display_df['Weighted_Score'] = display_df['Score'] * display_df['Weightage']
+                
+                if 'Weightage' in display_df.columns and 'benchmark_score' in display_df.columns:
+                    display_df['benchmark_weighted_score'] = display_df['benchmark_score'] * display_df['Weightage']
+                
+                # Validation for Weightage column (using current edited data)
+                if 'Weightage' in display_df.columns:
+                    weightage_sum = display_df['Weightage'].sum()
+                    if abs(weightage_sum - 1.0) > 0.01:
+                        st.warning(f"⚠️ Weightage values sum to {weightage_sum:.3f}. For optimal results, they should sum to 1.0")
+                    else:
+                        st.success(f"✅ Weightage values sum to {weightage_sum:.3f} - Good!")
+                
+                # Update session state only when explicitly requested (avoid automatic updates)
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    if st.button("💾 Save Changes", type="primary", use_container_width=True, key="save_scores"):
+                        # Update session state with edited values
+                        st.session_state.results_df = display_df.copy()
+                        st.success("✅ Changes saved successfully!")
+                
+                with col3:
+                    if st.button("🔄 Reset to Original", type="secondary", use_container_width=True, key="reset_scores"):
+                        # Reset to original values
+                        if 'original_final_scores' in st.session_state:
+                            st.session_state.results_df = st.session_state.original_final_scores.copy()
+                        else:
+                            st.session_state.results_df = final_scores_df.copy()
+                        st.success("✅ Values reset to original!")
+                
+                # Always use display_df for charts (shows real-time changes)
                 
                 # Bar Chart for Weighted Score vs Benchmark
                 fig_final = px.bar(
-                    final_scores_df,
+                    display_df,
                     x="Parameter",
                     y=["Weighted_Score", "benchmark_weighted_score"],
                     barmode="group",
@@ -541,7 +630,7 @@ with button_container:
                             y=1.1,
                             xref="paper",
                             yref="paper",
-                            text=f"Total Weighted Score: {final_scores_df['Weighted_Score'].sum():.2f} | Total Benchmark: {final_scores_df['benchmark_weighted_score'].sum():.2f}",
+                            text=f"Total Weighted Score: {display_df['Weighted_Score'].sum():.3f} | Total Benchmark: {display_df['benchmark_weighted_score'].sum():.3f}",
                             showarrow=False,
                             font=dict(size=14)
                         )
@@ -550,14 +639,20 @@ with button_container:
                 st.plotly_chart(fig_final, use_container_width=True)
                 
                 # Gauge Chart for Total Score vs Benchmark
-                total_score = final_scores_df['Weighted_Score'].sum()
-                total_benchmark = final_scores_df['benchmark_weighted_score'].sum()
+                total_score = display_df['Weighted_Score'].sum()
+                total_benchmark = display_df['benchmark_weighted_score'].sum()
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number+delta",
                     value=total_score,
+                    number={'valueformat': '.3f'},  # Format to 3 decimal places
                     domain={'x': [0, 1], 'y': [0, 1]},
                     title={'text': "Total Score (out of 10)"},
-                    delta={'reference': total_benchmark, 'increasing': {'color': "green"}, 'decreasing': {'color': "red"}},
+                    delta={
+                        'reference': total_benchmark, 
+                        'increasing': {'color': "green"}, 
+                        'decreasing': {'color': "red"},
+                        'valueformat': '.3f'  # Format delta to 3 decimal places
+                    },
                     gauge={
                         'axis': {'range': [0, 10]},
                         'bar': {'color': "darkblue"},
@@ -576,7 +671,9 @@ with button_container:
             if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
                 with st.spinner("Generating insights..."):
                     uploaded_content_str = str(all_content)
-                    insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, final_scores, 8.0)
+                    # Use updated scores from session state if available, otherwise use original
+                    scores_for_insights = st.session_state.results_df.to_dict('records') if 'results_df' in st.session_state else final_scores
+                    insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, scores_for_insights, 8.0)
                 
                 st.subheader("💡 Insights and Recommendations")
                 
@@ -597,16 +694,25 @@ with button_container:
                 for i, rec in enumerate(insights.get("recommendations", [])):
                     st.markdown(f"{i+1}. {rec}")
     
-        # Clean up temporary file
-        if os.path.exists(temp_pitch_path):
-            os.remove(temp_pitch_path)
-    else:
-        if not pitch_deck:
-            # st.info("Please upload a PDF pitch deck to begin the analysis.")
-            pass
+    # Show message when no analysis has been done yet
+    elif not st.session_state.analysis_complete:
+        st.info("👆 Please upload a pitch deck and click 'Start Analyzing' to begin the analysis.")
+
+# Add a button to start new analysis (clear session state)
+if st.session_state.analysis_complete:
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("🆕 Start New Analysis", type="secondary", use_container_width=True):
+            # Clear all analysis-related session state
+            keys_to_clear = ['analysis_complete', 'all_content', 'company_json', 'evaluation_data', 'final_scores', 'results_df', 'original_final_scores']
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.success("✅ Ready for new analysis! Upload a new pitch deck above.")
+            st.rerun()
 
 st.markdown("---")
-# st.markdown("Developed by GenAi_Crew | Powered by Gemini ")
 
 st.markdown("""
 <style>
@@ -619,20 +725,11 @@ st.markdown("""
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-.cool-footer span.developers {
     font-weight: bold;
     font-size: 18px;
 }
-.cool-footer span.separator {
-    color: #ffd700;
-    margin: 0 10px;
-}
-.cool-footer span.powered {
-    font-style: italic;
-}
 </style>
 <div class="cool-footer">
-    <span class="developers">Developed by GenAI Crew for Gen AI Exchange Hackathon</span>
+    Developed by GenAI Crew for Gen AI Exchange Hackathon
 </div>
 """, unsafe_allow_html=True)
