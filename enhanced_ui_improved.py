@@ -3,7 +3,40 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import asyncio
+import nest_asyncio
 from agents import StartupAnalyzerAgent
+
+# Allow nested event loops (needed for Streamlit + asyncio)
+nest_asyncio.apply()
+
+# Helper function to run async functions safely in Streamlit
+def run_async(coro):
+    """
+    Run an async coroutine safely in Streamlit environment.
+    Uses a new event loop with proper cleanup handling.
+    """
+    import warnings
+    warnings.filterwarnings('ignore', category=RuntimeWarning)
+    
+    try:
+        # Try to get existing event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the coroutine
+        result = loop.run_until_complete(coro)
+        
+        # Don't close the loop - let it be reused
+        return result
+    except Exception as e:
+        print(f"Error in run_async: {e}")
+        raise
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -347,12 +380,9 @@ with button_container:
         # Process documents using ADK DataProcessingAgent
         with st.spinner("🤖 Processing documents with AI agents..."):
             # Use async function with event loop
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
+            # Use run_async helper for proper event loop handling
             try:
-                # Call root agent to process documents
-                result = loop.run_until_complete(
+                result = run_async(
                     analyzer_agent.process_startup_documents(pitch_deck, additional_files)
                 )
                 
@@ -363,8 +393,6 @@ with button_container:
                     
             except Exception as e:
                 st.error(f"Agent processing error: {str(e)}")
-            finally:
-                loop.close()
 
     # Check analysis status using agent
     analysis_status = analyzer_agent.get_analysis_status()
@@ -480,19 +508,14 @@ with button_container:
         final_scores = session_data.get('final_scores', [])
         if not final_scores and evaluation_data and "error" not in evaluation_data:
             with st.spinner("🤖 Calculating weighted scores with AI agent..."):
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
                 try:
-                    score_result = loop.run_until_complete(
+                    score_result = run_async(
                         analyzer_agent.calculate_scores(evaluation_data)
                     )
                     if 'error' not in score_result:
                         final_scores = score_result['final_scores']
                 except Exception as e:
                     st.error(f"Score calculation error: {str(e)}")
-                finally:
-                    loop.close()
         
         # Tab 3: Final Weighted Scores
         with tab3:
@@ -508,6 +531,7 @@ with button_container:
                     analyzer_agent.update_session_data('original_final_scores', final_scores_df.copy())
                 
                 # Create editable data editor with specific column configuration
+                st.caption("You can edit multiple cells below. No processing will occur until you click 'Recalculate'.")
                 column_config = {}
                 
                 # Configure each column - make Threshold and Weightage editable
@@ -539,10 +563,11 @@ with button_container:
                         )
                 
                 # Get current results from agent session
+                # Only set results_df in session if it doesn't exist (first load)
                 current_results_df = session_data.get('results_df')
                 if current_results_df is None:
                     current_results_df = final_scores_df.copy()
-                    analyzer_agent.update_session_data('results_df', current_results_df)
+                    # Do NOT update session here; only after recalculation
                 
                 # Display editable data editor
                 edited_df = st.data_editor(
@@ -553,7 +578,7 @@ with button_container:
                     key="final_scores_editor",
                     num_rows="fixed"
                 )
-                
+
                 # Show validation for edited data (but don't calculate weighted scores yet)
                 if 'Weightage' in edited_df.columns:
                     weightage_sum = edited_df['Weightage'].sum()
@@ -561,40 +586,41 @@ with button_container:
                         st.warning(f"⚠️ Weightage values sum to {weightage_sum:.3f}. For optimal results, they should sum to 1.0")
                     else:
                         st.success(f"✅ Weightage values sum to {weightage_sum:.3f} - Good!")
-                
+
                 # Check if user has made changes
                 has_changes = not edited_df.equals(current_results_df)
                 if has_changes:
                     st.info("📝 You have unsaved changes. Click 'Recalculate' to apply them.")
-                
+
                 # Action button - centered
                 col1, col2, col3 = st.columns([1, 1, 1])
                 with col2:
-                    if st.button("� Recalculate", type="primary", use_container_width=True, key="save_scores", disabled=not has_changes):
-                        # Use CalculationAgent to recalculate scores with edited data
-                        with st.spinner("🤖 Recalculating scores with AI agent..."):
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            
-                            try:
-                                recalc_result = loop.run_until_complete(
-                                    analyzer_agent.recalculate_scores(edited_df)
-                                )
-                                if 'error' not in recalc_result:
-                                    st.success("✅ Recalculated successfully!")
-                                    # The recalculation should update session state automatically through the agent
-                                    st.rerun()  # Refresh to show updated charts
-                                else:
-                                    st.error(f"Recalculation failed: {recalc_result['error']}")
-                            except Exception as e:
-                                st.error(f"Agent recalculation error: {str(e)}")
-                            finally:
-                                loop.close()
+                    recalculate_clicked = st.button("🔄 Recalculate", type="primary", use_container_width=True, key="save_scores", disabled=not has_changes)
 
-                
+                # Only run recalculation and update session if button was explicitly clicked
+                if recalculate_clicked and has_changes:
+                    # Use CalculationAgent to recalculate scores with edited data
+                    with st.spinner("🤖 Recalculating scores with AI agent..."):
+                        try:
+                            recalc_result = run_async(
+                                analyzer_agent.recalculate_scores(edited_df)
+                            )
+                            if 'error' not in recalc_result:
+                                # The agent already updated session with recalculated scores
+                                # No need to update again here
+                                st.success("✅ Recalculated successfully!")
+                                st.rerun()  # Refresh to show updated charts
+                            else:
+                                st.error(f"Recalculation failed: {recalc_result['error']}")
+                        except Exception as e:
+                            st.error(f"Agent recalculation error: {str(e)}")
+
                 # Use saved calculated data for charts (only updates after Recalculate)
-                display_df = session_data.get('results_df', final_scores_df).copy()
-                
+                _results_df = session_data.get('results_df')
+                if _results_df is not None:
+                    display_df = _results_df.copy()
+                else:
+                    display_df = final_scores_df.copy()
                 # Show status of displayed data
                 if has_changes:
                     st.warning("📊 Charts show previously saved data. Click 'Recalculate' to see updated results.")
@@ -666,40 +692,62 @@ with button_container:
                     current_results_df = session_data.get('results_df')
                     scores_for_insights = current_results_df.to_dict('records') if current_results_df is not None else final_scores
                     
-                    # Generate insights using agent
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    
+                    # Generate insights using agent - use run_async helper
                     try:
-                        insights = loop.run_until_complete(
+                        insights = run_async(
                             analyzer_agent.generate_insights(
                                 uploaded_content_str, company_json, evaluation_data, 
                                 scores_for_insights, 8.0
                             )
                         )
                     except Exception as e:
+                        st.error(f"❌ Insight generation failed: {str(e)}")
                         insights = {'error': f'Insight generation failed: {str(e)}'}
-                    finally:
-                        loop.close()
                 
-                st.subheader("💡 Insights and Recommendations")
-                
-                # Red Flags
-                st.markdown("### 🚨 Red Flags")
-                for flag in insights.get("red_flags", []):
-                    with st.expander(flag["description"]):
-                        st.markdown(f"**Reference**: {flag['reference']}")
-                
-                # Green Flags
-                st.markdown("### ✅ Green Flags")
-                for flag in insights.get("green_flags", []):
-                    with st.expander(flag["description"]):
-                        st.markdown(f"**Reference**: {flag['reference']}")
-                
-                # Recommendations
-                st.markdown("### 📝 Recommendations")
-                for i, rec in enumerate(insights.get("recommendations", [])):
-                    st.markdown(f"{i+1}. {rec}")
+                # Only show insights if generation was successful
+                if 'error' not in insights:
+                    st.subheader("💡 Insights and Recommendations")
+                    
+                    # Red Flags
+                    st.markdown("### 🚨 Red Flags")
+                    red_flags = insights.get("red_flags", [])
+                    if red_flags:
+                        for flag in red_flags:
+                            with st.expander(flag.get("description", "N/A")):
+                                st.markdown(f"**Reference**: {flag.get('reference', 'N/A')}")
+                    else:
+                        st.info("No red flags identified.")
+                    
+                    # Green Flags
+                    st.markdown("### ✅ Green Flags")
+                    green_flags = insights.get("green_flags", [])
+                    if green_flags:
+                        for flag in green_flags:
+                            with st.expander(flag.get("description", "N/A")):
+                                st.markdown(f"**Reference**: {flag.get('reference', 'N/A')}")
+                    else:
+                        st.info("No green flags identified.")
+                    
+                    # Recommendations
+                    st.markdown("### 📝 Recommendations")
+                    recommendations = insights.get("recommendations", [])
+                    if recommendations:
+                        for i, rec in enumerate(recommendations):
+                            st.markdown(f"{i+1}. {rec}")
+                    else:
+                        st.info("No recommendations available.")
+                else:
+                    st.error(f"Failed to generate insights: {insights.get('error', 'Unknown error')}")
+            else:
+                # Show why insights can't be generated
+                if "error" in company_json:
+                    st.error(f"❌ Cannot generate insights due to company analysis error: {company_json.get('error')}")
+                elif not evaluation_data:
+                    st.error("❌ Cannot generate insights: Evaluation data is missing")
+                elif "error" in evaluation_data:
+                    st.error(f"❌ Cannot generate insights due to evaluation error: {evaluation_data.get('error')}")
+                else:
+                    st.warning("⚠️ Insights cannot be generated at this time.")
     
     # Show message when no analysis has been done yet
     elif not analysis_status['analysis_complete']:

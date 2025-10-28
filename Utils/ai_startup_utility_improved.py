@@ -11,9 +11,6 @@ import pdfplumber
 from PyPDF2 import PdfReader
 from google import genai
 from dotenv import load_dotenv
-from agents.attribute_extraction_prompt import ATTRIBUTE_EXTRACTION_PROMPT
-from agents.startup_scoring_prompt import STARTUP_SCORING_PROMPT
-from agents.insight_prompt import INSIGHT_PROMPT
 import json
 from docx import Document
 from Utils.public_data_source import public_data_source
@@ -24,10 +21,22 @@ load_dotenv(dotenv_path="agents/.env")
 key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Load prompts from text files
+def load_prompt(filename):
+    """Load prompt from text file"""
+    prompt_path = os.path.join('prompts', filename)
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+ATTRIBUTE_EXTRACTION_PROMPT = load_prompt('attribute_extraction.txt')
+STARTUP_SCORING_PROMPT = load_prompt('startup_scoring.txt')
+INSIGHT_PROMPT = load_prompt('insight.txt')
+
 class AIStartupUtility:
 
     def __init__(self, model_name: str, weightages: dict = None):
-        self.model = genai.GenerativeModel(model_name)
+        self.model_name = model_name
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
         self.weightages = weightages if weightages is not None else {}
 
 
@@ -284,7 +293,10 @@ class AIStartupUtility:
 
             prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the startup's document: {company_document} provide the JSON output as specified."
             # Call Gemini API for analysis
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
         
             response_text = response.text.strip()
         
@@ -329,7 +341,10 @@ class AIStartupUtility:
 
             prompt=f"{STARTUP_SCORING_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_important_details_json)}"
             # Call Gemini API for analysis
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
         
             response_text = response.text.strip()
         
@@ -399,14 +414,26 @@ class AIStartupUtility:
         Output: 
         """
         try:
+            print(f"Generating insights with model: {self.model_name}")
+            print(f"Uploaded content length: {len(str(uploaded_files_content))}")
+            print(f"Company data: {type(startup_extracted_data)}")
+            print(f"Evaluation data: {type(startup_score_normalized)}")
+            print(f"Final scores: {type(final_score)}")
+            print(f"Benchmark score: {final_benchmark_score}")
 
             prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup: The text provided from pitch deck and other documents \n\n{str(uploaded_files_content)}  \n\n The important extracted attributes of company from files {str(startup_extracted_data)} \n\the evaluation scores about the startup:\n\n{str(startup_score_normalized)}\n\nHere is the overall score about the startup:\n\n{str(final_score)} against the benchmark score considering top players in similar category which is final benchmark score: {str(final_benchmark_score)} "
+            
+            print(f"Prompt length: {len(prompt)} characters")
+            
             # Call Gemini API for analysis
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
         
             response_text = response.text.strip()
         
-            print("Gemini response:", response_text)
+            print("Gemini response:", response_text[:500] if len(response_text) > 500 else response_text)
 
             # Extract and parse JSON from response
             if response_text.startswith('{') and response_text.endswith('}'):
@@ -419,14 +446,23 @@ class AIStartupUtility:
                     json_str = response_text[start:end]
                     generated_insight = json.loads(json_str)
                 else:
+                    print(f"Could not find JSON in response: {response_text}")
                     generated_insight = {
                         "error": "Could not extract valid JSON",
+                        "raw_response": response_text
                     }
+            
+            print(f"Generated insight keys: {generated_insight.keys()}")
             return generated_insight
 
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {str(e)}")
-            return {}
+            return {"error": f"JSON parsing error: {str(e)}"}
+        except Exception as e:
+            print(f"Error in derive_insight: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {"error": f"Insight generation error: {str(e)}"}
 
     async def enrich_company_data(self, startup_name, sector):
         """
@@ -440,7 +476,10 @@ class AIStartupUtility:
             prompt = f"Extract and structure the following company data for '{startup_name}' in the '{sector}' sector. Focus on details about funding, key personnel, recent news, and product offerings. Present the output as a single JSON object. Here is the raw data from various sources: \n\nCrunchbase: {public_data.get('crunchbase', 'N/A')}\nAngelList: {public_data.get('angellist', 'N/A')}\nLinkedIn: {public_data.get('linkedin', 'N/A')}\nNews: {public_data.get('news', 'N/A')}"
 
             # Step 3: Call Gemini API for analysis
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
             response_text = response.text.strip()
             
             print("Gemini enrichment response:", response_text)
