@@ -520,19 +520,16 @@ with button_container:
                 if 'results_df' not in st.session_state:
                     st.session_state.results_df = final_scores_df.copy()
                 
-                # Add info message about editable columns
-                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Charts update in real-time as you edit. Click **Save Changes** to persist your edits.")
-                
                 # Initialize original scores tracking if not exists
                 if 'original_final_scores' not in st.session_state:
                     st.session_state.original_final_scores = final_scores_df.copy()
                 
-                # Show changes indicator if data was modified
-                if 'results_df' in st.session_state and 'original_final_scores' in st.session_state:
-                    original_sum = st.session_state.original_final_scores['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.original_final_scores.columns else 0
-                    current_sum = st.session_state.results_df['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.results_df.columns else 0
-                    if abs(original_sum - current_sum) > 0.01:
-                        st.warning(f"⚠️ Modified scores detected. Original total: {original_sum:.2f}, Current total: {current_sum:.2f}")
+                # Initialize edited_pending flag to track unsaved changes
+                if 'edits_pending' not in st.session_state:
+                    st.session_state.edits_pending = False
+                
+                # Add info message about editable columns
+                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Make all your changes, then click **Save Changes** to recalculate scores.")
                 
                 # Create editable data editor with specific column configuration
                 column_config = {}
@@ -575,13 +572,13 @@ with button_container:
                     num_rows="fixed"
                 )
                 
-                # Create a working copy for calculations (recalculate weighted scores)
-                display_df = edited_df.copy()
-                if 'Weightage' in display_df.columns and 'Score' in display_df.columns:
-                    display_df['Weighted_Score'] = display_df['Score'] * display_df['Weightage']
+                # Check if there are any changes between edited_df and results_df
+                if not edited_df.equals(st.session_state.results_df):
+                    st.session_state.edits_pending = True
+                    st.warning("⚠️ You have unsaved changes. Click **Save Changes** to recalculate scores with your edits.")
                 
-                if 'Weightage' in display_df.columns and 'benchmark_score' in display_df.columns:
-                    display_df['benchmark_weighted_score'] = display_df['benchmark_score'] * display_df['Weightage']
+                # Use the saved results_df for display (not the edited_df until saved)
+                display_df = st.session_state.results_df.copy()
                 
                 # Validation for Weightage column (using current edited data)
                 if 'Weightage' in display_df.columns:
@@ -595,9 +592,23 @@ with button_container:
                 col1, col2, col3 = st.columns([1, 1, 1])
                 with col1:
                     if st.button("💾 Save Changes", type="primary", use_container_width=True, key="save_scores"):
-                        # Update session state with edited values
-                        st.session_state.results_df = display_df.copy()
-                        st.success("✅ Changes saved successfully!")
+                        with st.spinner("🔄 Recalculating scores... Please wait."):
+                            # Recalculate weighted scores with the edited values
+                            updated_df = edited_df.copy()
+                            if 'Weightage' in updated_df.columns and 'Score' in updated_df.columns:
+                                updated_df['Weighted_Score'] = updated_df['Score'] * updated_df['Weightage']
+                            
+                            if 'Weightage' in updated_df.columns and 'Benchmark_normalized' in updated_df.columns:
+                                updated_df['benchmark_weighted_score'] = updated_df['Benchmark_normalized'] * updated_df['Weightage']
+                            
+                            # Update session state with recalculated values
+                            st.session_state.results_df = updated_df.copy()
+                            st.session_state.edits_pending = False
+                            # Clear cached insights to force regeneration with new scores
+                            if 'cached_insights' in st.session_state:
+                                del st.session_state['cached_insights']
+                        st.success("✅ Changes saved and scores recalculated successfully!")
+                        st.rerun()
                 
                 with col3:
                     if st.button("🔄 Reset to Original", type="secondary", use_container_width=True, key="reset_scores"):
@@ -606,9 +617,14 @@ with button_container:
                             st.session_state.results_df = st.session_state.original_final_scores.copy()
                         else:
                             st.session_state.results_df = final_scores_df.copy()
+                        st.session_state.edits_pending = False
+                        # Clear cached insights to force regeneration with new scores
+                        if 'cached_insights' in st.session_state:
+                            del st.session_state['cached_insights']
                         st.success("✅ Values reset to original!")
+                        st.rerun()
                 
-                # Always use display_df for charts (shows real-time changes)
+                # Always use display_df for charts (shows saved state only)
                 
                 # Bar Chart for Weighted Score vs Benchmark
                 fig_final = px.bar(
@@ -669,13 +685,36 @@ with button_container:
         # Tab 4: Insights and Recommendations
         with tab4:
             if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
-                with st.spinner("Generating insights..."):
-                    uploaded_content_str = str(all_content)
-                    # Use updated scores from session state if available, otherwise use original
-                    scores_for_insights = st.session_state.results_df.to_dict('records') if 'results_df' in st.session_state else final_scores
-                    insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, scores_for_insights, 8.0)
+                # Check if insights are already cached
+                if 'cached_insights' not in st.session_state:
+                    with st.spinner("Generating insights..."):
+                        uploaded_content_str = str(all_content)
+                        # Use updated scores from session state if available, otherwise use original
+                        scores_for_insights = st.session_state.results_df.to_dict('records') if 'results_df' in st.session_state else final_scores
+                        total_score = st.session_state.results_df['Weighted_Score'].sum() if 'results_df' in st.session_state and 'Weighted_Score' in st.session_state.results_df.columns else sum(item.get('Weighted_Score', 0) for item in final_scores)
+                        total_benchmark = st.session_state.results_df['benchmark_weighted_score'].sum() if 'results_df' in st.session_state and 'benchmark_weighted_score' in st.session_state.results_df.columns else 8.0
+                        
+                        insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, scores_for_insights, total_benchmark)
+                        # Cache the insights
+                        st.session_state.cached_insights = insights
+                        st.session_state.insights_score_state = st.session_state.results_df.copy() if 'results_df' in st.session_state else final_scores_df.copy()
+                else:
+                    # Use cached insights
+                    insights = st.session_state.cached_insights
+                
+                # Check if insights are based on modified scores
+                insights_modified = False
+                if 'results_df' in st.session_state and 'original_final_scores' in st.session_state:
+                    if not st.session_state.results_df.equals(st.session_state.original_final_scores):
+                        insights_modified = True
                 
                 st.subheader("💡 Insights and Recommendations")
+                
+                # Show indicator if insights are based on modified scores
+                if insights_modified:
+                    st.info("ℹ️ These insights are based on your modified scores from the Final Scores tab.")
+                else:
+                    st.success("✅ These insights are based on the original calculated scores.")
                 
                 # Red Flags
                 st.markdown("### 🚨 Red Flags")
@@ -705,7 +744,7 @@ if st.session_state.analysis_complete:
     with col2:
         if st.button("🆕 Start New Analysis", type="secondary", use_container_width=True):
             # Clear all analysis-related session state
-            keys_to_clear = ['analysis_complete', 'all_content', 'company_json', 'evaluation_data', 'final_scores', 'results_df', 'original_final_scores']
+            keys_to_clear = ['analysis_complete', 'all_content', 'company_json', 'evaluation_data', 'final_scores', 'results_df', 'original_final_scores', 'edits_pending', 'cached_insights', 'insights_score_state']
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
