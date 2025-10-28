@@ -1,5 +1,15 @@
 {
-    "gemini_model": "gemini-2.0-flash",
+    "gemini_model": "gemini-1.5-flash",
     "temperature": 0.7,
-    "max_output_tokens": 200
+    "max_output_tokens": 200,
+    "scoring_weightages": {
+        "Team_Quality": 0.15,
+        "Market_Size": 0.15,
+        "Traction": 0.15,
+        "Financials": 0.10,
+        "Product_Uniqueness": 0.15,
+        "Competitive_Landscape": 0.10,
+        "Business_Model_Clarity": 0.10,
+        "Risk_Factors": 0.10
+    }
 }

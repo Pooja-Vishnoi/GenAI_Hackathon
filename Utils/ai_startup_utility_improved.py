@@ -16,6 +16,7 @@ from agents.startup_scoring_prompt import STARTUP_SCORING_PROMPT
 from agents.insight_prompt import INSIGHT_PROMPT
 import json
 from docx import Document
+from Utils.public_data_source import public_data_source
 
 load_dotenv(dotenv_path="agents/.env")
 
@@ -25,8 +26,9 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class AIStartupUtility:
 
-    def __init__(self):
-        pass
+    def __init__(self, model_name: str, weightages: dict = None):
+        self.model = genai.GenerativeModel(model_name)
+        self.weightages = weightages if weightages is not None else {}
 
 
     def extract_text_from_pdf(self, pdf_path):
@@ -272,7 +274,7 @@ class AIStartupUtility:
             print(f"Error extracting text from TXT: {str(e)}")
             return "Not available"
         
-    def get_company_json_from_gemini(self, company_document=""):
+    async def get_company_json_from_gemini(self, company_document=""):
 
         """Uses gemini api to get important startup details in json format
         Input: [{"page_no": 1, "extracted_text": "text from page 1", "extracted_text_from_image": "image text from page 1", "extracted_tabular_data": "table data from page 1"}, {...}]
@@ -282,10 +284,7 @@ class AIStartupUtility:
 
             prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the startup's document: {company_document} provide the JSON output as specified."
             # Call Gemini API for analysis
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            response = await self.model.generate_content_async(prompt)
         
             response_text = response.text.strip()
         
@@ -320,7 +319,7 @@ class AIStartupUtility:
 
 
             
-    def startup_evaluation(self, startup_important_details_json):
+    async def startup_evaluation(self, startup_important_details_json):
         
         """Uses gemini api to evaluate startup based on json input based on 10 parameters
         Input: company_important_details_json {"company_name": "name of startup", "sector": "sector of startup", "founded": "2022", "team": "3 founders from IIT Delhi + 10 engineers","market": "Indian SME lending market $50B", "traction": "10,000 users, 20% MoM growth","revenue": "INR 2 Cr ARR", "unique_selling_point": "AI-driven underwriting with 30% lower default rate", "competition": "KreditBee, LendingKart", "risks": "Regulatory hurdles, funding dependency"}
@@ -330,11 +329,7 @@ class AIStartupUtility:
 
             prompt=f"{STARTUP_SCORING_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_important_details_json)}"
             # Call Gemini API for analysis
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            response = await self.model.generate_content_async(prompt)
         
             response_text = response.text.strip()
         
@@ -364,16 +359,7 @@ class AIStartupUtility:
 
     def calculate_final_score_updated(self, evaluation_data) -> dict:
         # Define weightages for each parameter
-        weightages = {
-            "Team_Quality": 0.15,
-            "Market_Size": 0.15,
-            "Traction": 0.15,
-            "Financials": 0.10,
-            "Product_Uniqueness": 0.15,
-            "Competitive_Landscape": 0.10,
-            "Business_Model_Clarity": 0.10,
-            "Risk_Factors": 0.10
-        }
+        weightages = self.weightages
         
         # Check if evaluation_data is a dict with 'startup_score' key
         if isinstance(evaluation_data, dict) and "startup_score" in evaluation_data:
@@ -406,7 +392,7 @@ class AIStartupUtility:
         # Return the final JSON structure
         return result
 
-    def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
+    async def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
         
         """Uses gemini api to identify red and green flags and recommendations
         Input: 
@@ -416,10 +402,7 @@ class AIStartupUtility:
 
             prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup: The text provided from pitch deck and other documents \n\n{str(uploaded_files_content)}  \n\n The important extracted attributes of company from files {str(startup_extracted_data)} \n\the evaluation scores about the startup:\n\n{str(startup_score_normalized)}\n\nHere is the overall score about the startup:\n\n{str(final_score)} against the benchmark score considering top players in similar category which is final benchmark score: {str(final_benchmark_score)} "
             # Call Gemini API for analysis
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            response = await self.model.generate_content_async(prompt)
         
             response_text = response.text.strip()
         
@@ -444,6 +427,41 @@ class AIStartupUtility:
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {str(e)}")
             return {}
+
+    async def enrich_company_data(self, startup_name, sector):
+        """
+        Enriches company data by fetching information from public sources and using Gemini to extract structured data.
+        """
+        try:
+            # Step 1: Fetch raw data from public sources
+            public_data = public_data_source(startup_name, sector)
+            
+            # Step 2: Create a prompt for Gemini to process the raw data
+            prompt = f"Extract and structure the following company data for '{startup_name}' in the '{sector}' sector. Focus on details about funding, key personnel, recent news, and product offerings. Present the output as a single JSON object. Here is the raw data from various sources: \n\nCrunchbase: {public_data.get('crunchbase', 'N/A')}\nAngelList: {public_data.get('angellist', 'N/A')}\nLinkedIn: {public_data.get('linkedin', 'N/A')}\nNews: {public_data.get('news', 'N/A')}"
+
+            # Step 3: Call Gemini API for analysis
+            response = await self.model.generate_content_async(prompt)
+            response_text = response.text.strip()
+            
+            print("Gemini enrichment response:", response_text)
+
+            # Step 4: Extract and parse JSON from response
+            if response_text.startswith('{') and response_text.endswith('}'):
+                enriched_data = json.loads(response_text)
+            else:
+                start = response_text.find('{')
+                end = response_text.rfind('}') + 1
+                if start != -1 and end != 0:
+                    json_str = response_text[start:end]
+                    enriched_data = json.loads(json_str)
+                else:
+                    enriched_data = {"error": "Could not extract valid JSON from enrichment response."}
+            
+            return enriched_data
+
+        except Exception as e:
+            print(f"Error during data enrichment: {str(e)}")
+            return {"error": f"An error occurred during data enrichment: {str(e)}"}
 
     def report_generation(self, startup_data, score_data, overall_score_data, insights_data):
         pass

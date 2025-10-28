@@ -1,14 +1,9 @@
 import streamlit as st
-import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from Utils.ai_startup_utility_improved import AIStartupUtility
-
-
-
-# Since we're using st.data_editor directly in the main code, we no longer need this function
-
+import asyncio
+from agents import StartupAnalyzerAgent
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -151,8 +146,8 @@ st.markdown('<h1 class="main-header">    AI Startup Analyzer</h1>', unsafe_allow
 st.markdown('<p class="sub-header">Upload a startup pitch deck and generate actionable insights with comprehensive visualizations</p>', unsafe_allow_html=True)
 
 
-# Initialize AIStartupUtility
-utility = AIStartupUtility()
+# Initialize ADK Root Agent
+analyzer_agent = StartupAnalyzerAgent()
 
 # Custom CSS for enhanced UI/UX
 st.markdown("""
@@ -349,60 +344,42 @@ with button_container:
         st.session_state.analysis_complete = False
     
     if analyze_clicked and pitch_deck:
-        # Save pitch deck temporarily
-        temp_pitch_path = "temp_pitch.pdf"
-        with open(temp_pitch_path, "wb") as f:
-            f.write(pitch_deck.getbuffer())
-        
-        # Process pitch deck
-        with st.spinner("Processing Pitch Deck PDF..."):
-            pitch_result = utility.extract_text_from_pdf(temp_pitch_path)
-        
-        # Initialize all_content dict with pitch deck
-        all_content = {pitch_deck.name: pitch_result}
-        
-        # Process additional files if any
-        for add_file in additional_files or []:
-            temp_add_path = f"temp_{add_file.name}"
-            with open(temp_add_path, "wb") as f:
-                f.write(add_file.getbuffer())
+        # Process documents using ADK DataProcessingAgent
+        with st.spinner("🤖 Processing documents with AI agents..."):
+            # Use async function with event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             
-            if add_file.type == "application/pdf":
-                all_content[add_file.name] = utility.extract_text_from_pdf(temp_add_path)
-            elif add_file.type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-                all_content[add_file.name] = utility.extract_text_from_docx(temp_add_path)
-            elif add_file.type == "text/plain":
-                all_content[add_file.name] = utility.extract_text_from_txt(temp_add_path)
-            else:
-                st.warning(f"Unsupported file type for {add_file.name}. Skipping.")
-            
-            if os.path.exists(temp_add_path):
-                os.remove(temp_add_path)
-        
-        # Store analysis data in session state
-        st.session_state.all_content = all_content
-        st.session_state.analysis_complete = True
-        
-        # Clean up temporary file
-        if os.path.exists(temp_pitch_path):
-            os.remove(temp_pitch_path)
+            try:
+                # Call root agent to process documents
+                result = loop.run_until_complete(
+                    analyzer_agent.process_startup_documents(pitch_deck, additional_files)
+                )
+                
+                if 'error' in result:
+                    st.error(f"Analysis failed: {result['error']}")
+                else:
+                    st.success("✅ Document processing completed successfully!")
+                    
+            except Exception as e:
+                st.error(f"Agent processing error: {str(e)}")
+            finally:
+                loop.close()
 
+    # Check analysis status using agent
+    analysis_status = analyzer_agent.get_analysis_status()
+    
     # Show tabs if analysis has been completed at least once
-    if st.session_state.analysis_complete and 'all_content' in st.session_state:
+    if analysis_status['analysis_complete'] and analysis_status['has_company_data']:
         # Tabbed Interface
         tab1, tab2, tab3, tab4 = st.tabs(["Company Details", "Evaluation Scores", "Final Scores", "Insights"])
         
-        # Get all_content from session state
-        all_content = st.session_state.all_content
+        # Get data from agent session
+        session_data = analysis_status['session_data']
+        all_content = session_data['all_content']
     
-        # Get or calculate company analysis (cached in session state)
-        if 'company_json' not in st.session_state:
-            if all_content:
-                with st.spinner("Analyzing company details..."):
-                    company_document_str = str(all_content)
-                    st.session_state.company_json = utility.get_company_json_from_gemini(company_document_str)
-        
-        company_json = st.session_state.get('company_json', {})
+        # Get company analysis from agent session
+        company_json = session_data.get('company_json', {})
         
         # Tab 1: Company Details
         with tab1:
@@ -429,12 +406,8 @@ with button_container:
             else:
                 st.error("Failed to extract company details.")
     
-        # Get or calculate evaluation data (cached in session state)
-        if 'evaluation_data' not in st.session_state and company_json and "error" not in company_json:
-            with st.spinner("Evaluating startup..."):
-                st.session_state.evaluation_data = utility.startup_evaluation(company_json)
-        
-        evaluation_data = st.session_state.get('evaluation_data', {})
+        # Get evaluation data from agent session
+        evaluation_data = session_data.get('evaluation_data', {})
         
         # Tab 2: Evaluation Scores
         with tab2:
@@ -503,12 +476,23 @@ with button_container:
             else:
                 st.error("Failed to evaluate startup due to invalid evaluation data.")
     
-        # Get or calculate final scores (cached in session state)
-        if 'final_scores' not in st.session_state and evaluation_data and "error" not in evaluation_data:
-            with st.spinner("Calculating weighted scores..."):
-                st.session_state.final_scores = utility.calculate_final_score_updated(evaluation_data)
-        
-        final_scores = st.session_state.get('final_scores', [])
+        # Get or calculate final scores using CalculationAgent
+        final_scores = session_data.get('final_scores', [])
+        if not final_scores and evaluation_data and "error" not in evaluation_data:
+            with st.spinner("🤖 Calculating weighted scores with AI agent..."):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    score_result = loop.run_until_complete(
+                        analyzer_agent.calculate_scores(evaluation_data)
+                    )
+                    if 'error' not in score_result:
+                        final_scores = score_result['final_scores']
+                except Exception as e:
+                    st.error(f"Score calculation error: {str(e)}")
+                finally:
+                    loop.close()
         
         # Tab 3: Final Weighted Scores
         with tab3:
@@ -516,23 +500,12 @@ with button_container:
                 st.subheader("🏅 Final Weighted Scores")
                 final_scores_df = pd.DataFrame(final_scores)
                 
-                # Store original data in session state for editing
-                if 'results_df' not in st.session_state:
-                    st.session_state.results_df = final_scores_df.copy()
-                
                 # Add info message about editable columns
-                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Charts update in real-time as you edit. Click **Save Changes** to persist your edits.")
+                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Charts will update only after you click **Recalculate**.")
                 
                 # Initialize original scores tracking if not exists
-                if 'original_final_scores' not in st.session_state:
-                    st.session_state.original_final_scores = final_scores_df.copy()
-                
-                # Show changes indicator if data was modified
-                if 'results_df' in st.session_state and 'original_final_scores' in st.session_state:
-                    original_sum = st.session_state.original_final_scores['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.original_final_scores.columns else 0
-                    current_sum = st.session_state.results_df['Weighted_Score'].sum() if 'Weighted_Score' in st.session_state.results_df.columns else 0
-                    if abs(original_sum - current_sum) > 0.01:
-                        st.warning(f"⚠️ Modified scores detected. Original total: {original_sum:.2f}, Current total: {current_sum:.2f}")
+                if session_data.get('original_final_scores') is None:
+                    analyzer_agent.update_session_data('original_final_scores', final_scores_df.copy())
                 
                 # Create editable data editor with specific column configuration
                 column_config = {}
@@ -565,9 +538,15 @@ with button_container:
                             disabled=True
                         )
                 
+                # Get current results from agent session
+                current_results_df = session_data.get('results_df')
+                if current_results_df is None:
+                    current_results_df = final_scores_df.copy()
+                    analyzer_agent.update_session_data('results_df', current_results_df)
+                
                 # Display editable data editor
                 edited_df = st.data_editor(
-                    st.session_state.results_df,
+                    current_results_df,
                     column_config=column_config,
                     use_container_width=True,
                     hide_index=True,
@@ -575,40 +554,52 @@ with button_container:
                     num_rows="fixed"
                 )
                 
-                # Create a working copy for calculations (recalculate weighted scores)
-                display_df = edited_df.copy()
-                if 'Weightage' in display_df.columns and 'Score' in display_df.columns:
-                    display_df['Weighted_Score'] = display_df['Score'] * display_df['Weightage']
-                
-                if 'Weightage' in display_df.columns and 'benchmark_score' in display_df.columns:
-                    display_df['benchmark_weighted_score'] = display_df['benchmark_score'] * display_df['Weightage']
-                
-                # Validation for Weightage column (using current edited data)
-                if 'Weightage' in display_df.columns:
-                    weightage_sum = display_df['Weightage'].sum()
+                # Show validation for edited data (but don't calculate weighted scores yet)
+                if 'Weightage' in edited_df.columns:
+                    weightage_sum = edited_df['Weightage'].sum()
                     if abs(weightage_sum - 1.0) > 0.01:
                         st.warning(f"⚠️ Weightage values sum to {weightage_sum:.3f}. For optimal results, they should sum to 1.0")
                     else:
                         st.success(f"✅ Weightage values sum to {weightage_sum:.3f} - Good!")
                 
-                # Update session state only when explicitly requested (avoid automatic updates)
+                # Check if user has made changes
+                has_changes = not edited_df.equals(current_results_df)
+                if has_changes:
+                    st.info("📝 You have unsaved changes. Click 'Recalculate' to apply them.")
+                
+                # Action button - centered
                 col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    if st.button("💾 Save Changes", type="primary", use_container_width=True, key="save_scores"):
-                        # Update session state with edited values
-                        st.session_state.results_df = display_df.copy()
-                        st.success("✅ Changes saved successfully!")
+                with col2:
+                    if st.button("� Recalculate", type="primary", use_container_width=True, key="save_scores", disabled=not has_changes):
+                        # Use CalculationAgent to recalculate scores with edited data
+                        with st.spinner("🤖 Recalculating scores with AI agent..."):
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            
+                            try:
+                                recalc_result = loop.run_until_complete(
+                                    analyzer_agent.recalculate_scores(edited_df)
+                                )
+                                if 'error' not in recalc_result:
+                                    st.success("✅ Recalculated successfully!")
+                                    # The recalculation should update session state automatically through the agent
+                                    st.rerun()  # Refresh to show updated charts
+                                else:
+                                    st.error(f"Recalculation failed: {recalc_result['error']}")
+                            except Exception as e:
+                                st.error(f"Agent recalculation error: {str(e)}")
+                            finally:
+                                loop.close()
+
                 
-                with col3:
-                    if st.button("🔄 Reset to Original", type="secondary", use_container_width=True, key="reset_scores"):
-                        # Reset to original values
-                        if 'original_final_scores' in st.session_state:
-                            st.session_state.results_df = st.session_state.original_final_scores.copy()
-                        else:
-                            st.session_state.results_df = final_scores_df.copy()
-                        st.success("✅ Values reset to original!")
+                # Use saved calculated data for charts (only updates after Recalculate)
+                display_df = session_data.get('results_df', final_scores_df).copy()
                 
-                # Always use display_df for charts (shows real-time changes)
+                # Show status of displayed data
+                if has_changes:
+                    st.warning("📊 Charts show previously saved data. Click 'Recalculate' to see updated results.")
+                else:
+                    st.success("📊 Charts are up-to-date with your current data.")
                 
                 # Bar Chart for Weighted Score vs Benchmark
                 fig_final = px.bar(
@@ -669,11 +660,27 @@ with button_container:
         # Tab 4: Insights and Recommendations
         with tab4:
             if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
-                with st.spinner("Generating insights..."):
+                with st.spinner("🤖 Generating insights with AI agent..."):
                     uploaded_content_str = str(all_content)
                     # Use updated scores from session state if available, otherwise use original
-                    scores_for_insights = st.session_state.results_df.to_dict('records') if 'results_df' in st.session_state else final_scores
-                    insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, scores_for_insights, 8.0)
+                    current_results_df = session_data.get('results_df')
+                    scores_for_insights = current_results_df.to_dict('records') if current_results_df is not None else final_scores
+                    
+                    # Generate insights using agent
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    try:
+                        insights = loop.run_until_complete(
+                            analyzer_agent.generate_insights(
+                                uploaded_content_str, company_json, evaluation_data, 
+                                scores_for_insights, 8.0
+                            )
+                        )
+                    except Exception as e:
+                        insights = {'error': f'Insight generation failed: {str(e)}'}
+                    finally:
+                        loop.close()
                 
                 st.subheader("💡 Insights and Recommendations")
                 
@@ -695,20 +702,17 @@ with button_container:
                     st.markdown(f"{i+1}. {rec}")
     
     # Show message when no analysis has been done yet
-    elif not st.session_state.analysis_complete:
+    elif not analysis_status['analysis_complete']:
         st.info("👆 Please upload a pitch deck and click 'Start Analyzing' to begin the analysis.")
 
 # Add a button to start new analysis (clear session state)
-if st.session_state.analysis_complete:
+if analysis_status['analysis_complete']:
     st.markdown("---")
     col1, col2, col3 = st.columns([2, 1, 2])
     with col2:
         if st.button("🆕 Start New Analysis", type="secondary", use_container_width=True):
-            # Clear all analysis-related session state
-            keys_to_clear = ['analysis_complete', 'all_content', 'company_json', 'evaluation_data', 'final_scores', 'results_df', 'original_final_scores']
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
+            # Use agent to reset analysis
+            analyzer_agent.reset_analysis()
             st.success("✅ Ready for new analysis! Upload a new pitch deck above.")
             st.rerun()
 
