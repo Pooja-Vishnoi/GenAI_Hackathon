@@ -1,0 +1,11 @@
+# Don't ignore anything important
+!agents/
+!*.py
+!requirements.txt
+!enhanced_ui_improved.py
+
+# Ignore typical junk
+__pycache__/
+*.pyc
+.env
+venv/
