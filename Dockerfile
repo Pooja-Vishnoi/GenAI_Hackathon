@@ -1,23 +1,17 @@
 # Use lightweight Python image
 FROM python:3.12.1
-# FROM python:3.11
-# FROM python:3.9-slim-buster
-# FROM python:3.10
-
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements and install dependencies first (caches layers)
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
+# Copy the rest of your application code
 COPY . .
 
-# Ensure /app is in Python path (so agents/ can be imported)
+# Ensure /app is in Python path (for agent imports)
 ENV PYTHONPATH="/app"
 
 # Expose Streamlit port
@@ -25,4 +19,3 @@ EXPOSE 8080
 
 # Run Streamlit in Cloud Run (port must be 8080)
 CMD ["streamlit", "run", "enhanced_ui_improved.py", "--server.port=8080", "--server.address=0.0.0.0"]
-# CMD ["bash", "-c", "cd /app && streamlit run enhanced_ui_improved.py --server.port=8080 --server.address=0.0.0.0"]
