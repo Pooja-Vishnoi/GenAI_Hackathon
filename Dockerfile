@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app code
 COPY . .
 
+# Ensure /app is in Python path (so agents/ can be imported)
+ENV PYTHONPATH="/app"
+
 # Expose Streamlit port
 EXPOSE 8080
 
