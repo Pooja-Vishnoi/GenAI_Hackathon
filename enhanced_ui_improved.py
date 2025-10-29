@@ -4,6 +4,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import asyncio
 import nest_asyncio
+
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from agents import StartupAnalyzerAgent
 
 # Allow nested event loops (needed for Streamlit + asyncio)
