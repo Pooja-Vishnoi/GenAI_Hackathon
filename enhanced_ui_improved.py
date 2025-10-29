@@ -6,9 +6,12 @@ import asyncio
 import nest_asyncio
 
 import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(__file__))  # adds /app
 
-from agents import StartupAnalyzerAgent
+# from agents import StartupAnalyzerAgent
+from agents.root_agent import StartupAnalyzerAgent
+
 
 # Allow nested event loops (needed for Streamlit + asyncio)
 nest_asyncio.apply()
