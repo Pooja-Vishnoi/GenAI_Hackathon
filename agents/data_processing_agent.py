@@ -6,6 +6,9 @@ Sub-agent responsible for document extraction, company analysis, and evaluation
 import os
 import json
 from typing import Dict, Any, List
+import tempfile
+import mimetypes
+import uuid
 import sys
 from google.adk.agents import Agent
 from adk.tools import tool
@@ -136,32 +139,57 @@ class DataProcessingAgent(Agent):
             Complete analysis results including company details and evaluation
         """
         try:
-            # Step 1: Save and process pitch deck
-            temp_pitch_path = "temp_pitch.pdf"
-            with open(temp_pitch_path, "wb") as f:
-                f.write(pitch_deck.getbuffer())
-            
-            # Extract content from pitch deck
-            pitch_content = await self.extract_file_content(temp_pitch_path, "application/pdf")
-            all_content = {pitch_deck.name: pitch_content}
-            
+            # Helper to normalize different file inputs to (path, name, mime_type)
+            def _ensure_local_file(file_obj):
+                tmp_dir = tempfile.gettempdir()
+                # Streamlit UploadedFile-like
+                if hasattr(file_obj, 'getbuffer') and hasattr(file_obj, 'name'):
+                    name = getattr(file_obj, 'name')
+                    mime_type = getattr(file_obj, 'type', None)
+                    ext = os.path.splitext(name)[1]
+                    if not ext and mime_type:
+                        ext = mimetypes.guess_extension(mime_type) or ''
+                    safe_name = f"upload_{uuid.uuid4().hex}{ext}"
+                    path = os.path.join(tmp_dir, safe_name)
+                    with open(path, 'wb') as out:
+                        out.write(file_obj.getbuffer())
+                    if not mime_type:
+                        mime_type, _ = mimetypes.guess_type(path)
+                    return path, name, mime_type or 'application/octet-stream'
+                # Dict with saved info
+                if isinstance(file_obj, dict) and 'path' in file_obj:
+                    path = file_obj['path']
+                    name = file_obj.get('name', os.path.basename(path))
+                    mime_type = file_obj.get('type')
+                    if not mime_type:
+                        mime_type, _ = mimetypes.guess_type(path)
+                    return path, name, mime_type or 'application/octet-stream'
+                # Plain path
+                if isinstance(file_obj, str) and os.path.exists(file_obj):
+                    path = file_obj
+                    name = os.path.basename(path)
+                    mime_type, _ = mimetypes.guess_type(path)
+                    return path, name, mime_type or 'application/octet-stream'
+                raise ValueError('Unsupported file input')
+
+            # Step 1: Save and process pitch deck with real mime type
+            temp_pitch_path, pitch_name, pitch_type = _ensure_local_file(pitch_deck)
+            pitch_content = await self.extract_file_content(temp_pitch_path, pitch_type)
+            all_content = {pitch_name: pitch_content}
+
             # Step 2: Process additional files if provided
+            temp_to_cleanup: List[str] = []
             if additional_files:
                 for add_file in additional_files:
-                    temp_add_path = f"temp_{add_file.name}"
-                    with open(temp_add_path, "wb") as f:
-                        f.write(add_file.getbuffer())
-                    
                     try:
-                        file_content = await self.extract_file_content(temp_add_path, add_file.type)
-                        all_content[add_file.name] = file_content
-                    except ValueError as e:
-                        # Skip unsupported file types
+                        add_path, add_name, add_type = _ensure_local_file(add_file)
+                        # Track temp only if created under tmp as upload_*
+                        if os.path.dirname(add_path) == tempfile.gettempdir() and os.path.basename(add_path).startswith('upload_'):
+                            temp_to_cleanup.append(add_path)
+                        file_content = await self.extract_file_content(add_path, add_type)
+                        all_content[add_name] = file_content
+                    except ValueError:
                         continue
-                    finally:
-                        # Clean up temporary file
-                        if os.path.exists(temp_add_path):
-                            os.remove(temp_add_path)
             
             # Step 3: Analyze company details
             combined_content = str(all_content)
@@ -180,9 +208,18 @@ class DataProcessingAgent(Agent):
             if "error" not in company_json:
                 evaluation_data = await self.evaluate_startup(company_json)
             
-            # Clean up pitch deck file
-            if os.path.exists(temp_pitch_path):
-                os.remove(temp_pitch_path)
+            # Clean up temporary files we created
+            if os.path.exists(temp_pitch_path) and os.path.basename(temp_pitch_path).startswith('upload_'):
+                try:
+                    os.remove(temp_pitch_path)
+                except Exception:
+                    pass
+            for p in temp_to_cleanup:
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
             
             return {
                 'all_content': all_content,
@@ -193,11 +230,7 @@ class DataProcessingAgent(Agent):
             }
             
         except Exception as e:
-            # Clean up files on error
-            for temp_file in ["temp_pitch.pdf"] + [f"temp_{f.name}" for f in (additional_files or [])]:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-            
+            # Best-effort: no-op, individual cleanups handled above
             # Include more detailed error information
             import traceback
             error_details = traceback.format_exc()
@@ -224,3 +257,4 @@ class DataProcessingAgent(Agent):
         print(f"Enriching data for {startup_name} in sector {sector}...")
         enriched_data = await self.utility.enrich_company_data(startup_name, sector)
         return enriched_data
+        

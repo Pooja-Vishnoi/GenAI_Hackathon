@@ -292,11 +292,25 @@ class AIStartupUtility:
         try:
 
             prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the startup's document: {company_document} provide the JSON output as specified."
-            # Call Gemini API for analysis
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            
+            # Call Gemini API for analysis with proper error handling
+            try:
+                # Create a fresh client bound to the current event loop/thread
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "cannot schedule new futures after interpreter shutdown" in error_msg or "Event loop is closed" in error_msg:
+                    logger.error(f"Event loop issue detected: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again.",
+                        "company_name": "Unknown",
+                        "sector": "Unknown"
+                    }
+                raise
         
             response_text = response.text.strip()
         
@@ -328,6 +342,13 @@ class AIStartupUtility:
                 "sector": "Unknown",
                 "raw_response": response_text[:200] if 'response_text' in locals() else "No response"
             }
+        except Exception as e:
+            print(f"Unexpected error in get_company_json_from_gemini: {str(e)}")
+            return {
+                "error": f"API error: {str(e)}",
+                "company_name": "Unknown",
+                "sector": "Unknown"
+            }
 
 
             
@@ -340,11 +361,23 @@ class AIStartupUtility:
         try:
 
             prompt=f"{STARTUP_SCORING_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_important_details_json)}"
-            # Call Gemini API for analysis
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            
+            # Call Gemini API for analysis with proper error handling
+            try:
+                # Create a fresh client bound to the current event loop/thread
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "cannot schedule new futures after interpreter shutdown" in error_msg or "Event loop is closed" in error_msg:
+                    logger.error(f"Event loop issue during evaluation: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again."
+                    }
+                raise
         
             response_text = response.text.strip()
         
@@ -425,11 +458,24 @@ class AIStartupUtility:
             
             print(f"Prompt length: {len(prompt)} characters")
             
-            # Call Gemini API for analysis
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            # Call Gemini API for analysis with loop-safe client
+            try:
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "Event loop is closed" in error_msg or "cannot schedule new futures" in error_msg:
+                    logger.error(f"Event loop issue during insight generation: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again in a moment.",
+                        "red_flags": [],
+                        "green_flags": [],
+                        "recommendations": []
+                    }
+                raise
         
             response_text = response.text.strip()
         
@@ -475,11 +521,19 @@ class AIStartupUtility:
             # Step 2: Create a prompt for Gemini to process the raw data
             prompt = f"Extract and structure the following company data for '{startup_name}' in the '{sector}' sector. Focus on details about funding, key personnel, recent news, and product offerings. Present the output as a single JSON object. Here is the raw data from various sources: \n\nCrunchbase: {public_data.get('crunchbase', 'N/A')}\nAngelList: {public_data.get('angellist', 'N/A')}\nLinkedIn: {public_data.get('linkedin', 'N/A')}\nNews: {public_data.get('news', 'N/A')}"
 
-            # Step 3: Call Gemini API for analysis
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
+            # Step 3: Call Gemini API for analysis with loop-safe client
+            try:
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "Event loop is closed" in error_msg or "cannot schedule new futures" in error_msg:
+                    logger.error(f"Event loop issue during enrichment: {error_msg}")
+                    return {"error": "System is processing. Please try again in a moment."}
+                raise
             response_text = response.text.strip()
             
             print("Gemini enrichment response:", response_text)

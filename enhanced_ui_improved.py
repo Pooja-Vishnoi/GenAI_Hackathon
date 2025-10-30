@@ -3,7 +3,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import asyncio
-import nest_asyncio
+import os
+import uuid
+import tempfile
+import mimetypes
+import threading
 
 import sys, os
 # sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -13,37 +17,70 @@ sys.path.append(os.path.dirname(__file__))  # adds /app
 from agents.root_agent import StartupAnalyzerAgent
 
 
-# Allow nested event loops (needed for Streamlit + asyncio)
-nest_asyncio.apply()
-
 # Helper function to run async functions safely in Streamlit
 def run_async(coro):
     """
-    Run an async coroutine safely in Streamlit environment.
-    Uses a new event loop with proper cleanup handling.
+    Run an async coroutine safely in both local and cloud environments.
+    Uses threading to isolate event loop from Streamlit's event loop.
     """
     import warnings
     warnings.filterwarnings('ignore', category=RuntimeWarning)
     
-    try:
-        # Try to get existing event loop
+    result = []
+    exception = []
+    
+    def run_in_thread():
+        """Run coroutine in a separate thread with its own event loop"""
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
+            # Create a new event loop for this thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        
-        # Run the coroutine
-        result = loop.run_until_complete(coro)
-        
-        # Don't close the loop - let it be reused
-        return result
-    except Exception as e:
-        print(f"Error in run_async: {e}")
-        raise
+            
+            try:
+                # Run with timeout
+                output = loop.run_until_complete(
+                    asyncio.wait_for(coro, timeout=300.0)
+                )
+                result.append(output)
+            finally:
+                # Clean up
+                try:
+                    # Cancel pending tasks
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    if pending:
+                        loop.run_until_complete(
+                            asyncio.gather(*pending, return_exceptions=True)
+                        )
+                except Exception:
+                    pass
+                finally:
+                    loop.close()
+                    
+        except asyncio.TimeoutError:
+            exception.append(Exception("Operation timed out after 5 minutes"))
+        except Exception as e:
+            exception.append(e)
+    
+    # Run in separate thread to avoid event loop conflicts
+    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread.start()
+    thread.join(timeout=310)  # Wait slightly longer than coroutine timeout
+    
+    if thread.is_alive():
+        raise Exception("Operation timed out")
+    
+    if exception:
+        print(f"Error in run_async: {exception[0]}")
+        import traceback
+        traceback.print_exc()
+        raise exception[0]
+    
+    if not result:
+        raise Exception("No result returned from async operation")
+    
+    return result[0]
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -290,6 +327,59 @@ with col1:
 with col2:
     additional_files = st.file_uploader("Upload Optional Documents (e.g., call transcript, founder copy, email document)", type=["pdf", "docx", "doc", "txt"], accept_multiple_files=True, help="Upload multiple files if needed")
 
+# Persist uploaded files to /tmp to survive reruns/cloud instance nuances
+if pitch_deck is not None:
+    # Use a deterministic filename to avoid recreating on every rerun
+    safe_name = pitch_deck.name.replace('/', '_').replace('\\', '_')
+    tmp_path = os.path.join(tempfile.gettempdir(), f"pitch_{safe_name}")
+    
+    # Only write if file doesn't exist or is different
+    should_write = True
+    if os.path.exists(tmp_path):
+        # Check if it's the same file by comparing size
+        existing_size = os.path.getsize(tmp_path)
+        new_size = len(pitch_deck.getbuffer())
+        should_write = (existing_size != new_size)
+    
+    if should_write:
+        with open(tmp_path, 'wb') as out:
+            out.write(pitch_deck.getbuffer())
+    
+    mime = getattr(pitch_deck, 'type', None) or mimetypes.guess_type(tmp_path)[0] or 'application/octet-stream'
+    st.session_state['saved_pitch'] = {'path': tmp_path, 'name': pitch_deck.name, 'type': mime}
+    st.success(f"✅ Pitch deck '{pitch_deck.name}' ready for analysis")
+
+if additional_files:
+    saved_list = []
+    for f in additional_files:
+        # Use deterministic filename
+        safe_name = f.name.replace('/', '_').replace('\\', '_')
+        tmp_path = os.path.join(tempfile.gettempdir(), f"add_{safe_name}")
+        
+        # Only write if file doesn't exist or is different
+        should_write = True
+        if os.path.exists(tmp_path):
+            existing_size = os.path.getsize(tmp_path)
+            new_size = len(f.getbuffer())
+            should_write = (existing_size != new_size)
+        
+        if should_write:
+            with open(tmp_path, 'wb') as out:
+                out.write(f.getbuffer())
+        
+        mime = getattr(f, 'type', None) or mimetypes.guess_type(tmp_path)[0] or 'application/octet-stream'
+        saved_list.append({'path': tmp_path, 'name': f.name, 'type': mime})
+    st.session_state['saved_additional'] = saved_list
+    st.success(f"✅ {len(additional_files)} additional file(s) ready")
+
+# Show saved files status if uploader is empty but files are in session
+if pitch_deck is None and 'saved_pitch' in st.session_state:
+    saved = st.session_state['saved_pitch']
+    if os.path.exists(saved['path']):
+        st.info(f"📁 Using previously uploaded: {saved['name']}")
+    else:
+        st.warning(f"⚠️ Previously uploaded file no longer accessible. Please re-upload.")
+
 
 
 # Apply enhanced CSS styling for the analyze button
@@ -354,7 +444,7 @@ with button_container:
         analyze_clicked = st.button(" Start Analyzing", type="primary", use_container_width=True)
         
         # Add helpful hint below button
-        if pitch_deck:
+        if pitch_deck or ('saved_pitch' in st.session_state):
             st.markdown("""
             <div style='
                 text-align: center; 
@@ -383,23 +473,50 @@ with button_container:
     if 'analysis_complete' not in st.session_state:
         st.session_state.analysis_complete = False
     
-    if analyze_clicked and pitch_deck:
+    if analyze_clicked and (pitch_deck or 'saved_pitch' in st.session_state):
         # Process documents using ADK DataProcessingAgent
         with st.spinner("🤖 Processing documents with AI agents..."):
             # Use async function with event loop
             # Use run_async helper for proper event loop handling
             try:
+                # Prefer live uploader objects; fallback to saved paths
+                pitch_input = pitch_deck if pitch_deck is not None else st.session_state.get('saved_pitch')
+                add_input = additional_files if additional_files else st.session_state.get('saved_additional')
+                
+                # Debug logging
+                print(f"DEBUG: pitch_deck is None: {pitch_deck is None}")
+                print(f"DEBUG: pitch_input type: {type(pitch_input)}")
+                if isinstance(pitch_input, dict):
+                    print(f"DEBUG: pitch_input path exists: {os.path.exists(pitch_input.get('path', ''))}")
+                    print(f"DEBUG: pitch_input path: {pitch_input.get('path', 'NO PATH')}")
+                
                 result = run_async(
-                    analyzer_agent.process_startup_documents(pitch_deck, additional_files)
+                    analyzer_agent.process_startup_documents(pitch_input, add_input)
                 )
                 
                 if 'error' in result:
                     st.error(f"Analysis failed: {result['error']}")
+                    # Show error details if available
+                    if 'error_details' in result:
+                        with st.expander("Show error details"):
+                            st.code(result['error_details'])
                 else:
+                    # Mirror agent's session updates on the main thread (thread-safe)
+                    try:
+                        analyzer_agent.update_session_data('all_content', result.get('all_content'))
+                        analyzer_agent.update_session_data('company_json', result.get('company_json'))
+                        analyzer_agent.update_session_data('evaluation_data', result.get('evaluation_data'))
+                        analyzer_agent.update_session_data('analysis_complete', True)
+                    except Exception as sess_e:
+                        print(f"WARNING: Failed to update session on main thread: {sess_e}")
                     st.success("✅ Document processing completed successfully!")
                     
             except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
                 st.error(f"Agent processing error: {str(e)}")
+                with st.expander("Show full error trace"):
+                    st.code(error_trace)
 
     # Check analysis status using agent
     analysis_status = analyzer_agent.get_analysis_status()
@@ -521,6 +638,15 @@ with button_container:
                     )
                     if 'error' not in score_result:
                         final_scores = score_result['final_scores']
+                        # Mirror agent's session updates on the main thread
+                        try:
+                            analyzer_agent.update_session_data('final_scores', score_result.get('final_scores'))
+                            sess_data = analyzer_agent.get_analysis_status().get('session_data', {})
+                            if sess_data.get('results_df') is None:
+                                analyzer_agent.update_session_data('results_df', score_result.get('final_scores_df'))
+                                analyzer_agent.update_session_data('original_final_scores', score_result.get('final_scores_df'))
+                        except Exception as sess_e:
+                            print(f"WARNING: Failed to update score session on main thread: {sess_e}")
                 except Exception as e:
                     st.error(f"Score calculation error: {str(e)}")
         
@@ -613,8 +739,11 @@ with button_container:
                                 analyzer_agent.recalculate_scores(edited_df)
                             )
                             if 'error' not in recalc_result:
-                                # The agent already updated session with recalculated scores
-                                # No need to update again here
+                                # Mirror agent's session updates on the main thread
+                                try:
+                                    analyzer_agent.update_session_data('results_df', recalc_result.get('updated_df'))
+                                except Exception as sess_e:
+                                    print(f"WARNING: Failed to update recalculated session on main thread: {sess_e}")
                                 st.success("✅ Recalculated successfully!")
                                 st.rerun()  # Refresh to show updated charts
                             else:
