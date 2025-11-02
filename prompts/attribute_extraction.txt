@@ -1,4 +1,3 @@
-ATTRIBUTE_EXTRACTION_PROMPT = """
 
 I am providing you with text extracted from multiple documents by startup with tagged filenames and extracted text from each file. Please analyze this content and extract comprehensive company information. Return ONLY a valid JSON object with these fields (set to not available if not found):
 keep the json short & crisp yet informative as per type and details mentrioned in the json
@@ -23,4 +22,3 @@ Example output format:
 
 Important: Don't return anything  other than json no explaination or extra text
 
-"""

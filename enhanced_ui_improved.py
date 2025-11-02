@@ -1,12 +1,86 @@
 import streamlit as st
-import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from Utils.ai_startup_utility_improved import AIStartupUtility
+import asyncio
+import os
+import uuid
+import tempfile
+import mimetypes
+import threading
 
-# Streamlit App Configuration
-# st.set_page_config(page_title="AI Startup Analyzer", layout="centered")
+import sys, os
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(__file__))  # adds /app
+
+# from agents import StartupAnalyzerAgent
+from agents.root_agent import StartupAnalyzerAgent
+
+
+# Helper function to run async functions safely in Streamlit
+def run_async(coro):
+    """
+    Run an async coroutine safely in both local and cloud environments.
+    Uses threading to isolate event loop from Streamlit's event loop.
+    """
+    import warnings
+    warnings.filterwarnings('ignore', category=RuntimeWarning)
+    
+    result = []
+    exception = []
+    
+    def run_in_thread():
+        """Run coroutine in a separate thread with its own event loop"""
+        try:
+            # Create a new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                # Run with timeout
+                output = loop.run_until_complete(
+                    asyncio.wait_for(coro, timeout=300.0)
+                )
+                result.append(output)
+            finally:
+                # Clean up
+                try:
+                    # Cancel pending tasks
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    if pending:
+                        loop.run_until_complete(
+                            asyncio.gather(*pending, return_exceptions=True)
+                        )
+                except Exception:
+                    pass
+                finally:
+                    loop.close()
+                    
+        except asyncio.TimeoutError:
+            exception.append(Exception("Operation timed out after 5 minutes"))
+        except Exception as e:
+            exception.append(e)
+    
+    # Run in separate thread to avoid event loop conflicts
+    thread = threading.Thread(target=run_in_thread, daemon=True)
+    thread.start()
+    thread.join(timeout=310)  # Wait slightly longer than coroutine timeout
+    
+    if thread.is_alive():
+        raise Exception("Operation timed out")
+    
+    if exception:
+        print(f"Error in run_async: {exception[0]}")
+        import traceback
+        traceback.print_exc()
+        raise exception[0]
+    
+    if not result:
+        raise Exception("No result returned from async operation")
+    
+    return result[0]
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -140,30 +214,7 @@ st.markdown("""
             hide-caret 2s steps(1, end) forwards;
     }
 }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #1f77b4;
-    }
-    .success-card {
-        background-color: #d4edda;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #28a745;
-    }
-    .warning-card {
-        background-color: #fff3cd;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #ffc107;
-    }
-    .danger-card {
-        background-color: #f8d7da;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #dc3545;
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,19 +223,12 @@ st.markdown('<h1 class="main-header">    AI Startup Analyzer</h1>', unsafe_allow
 st.markdown('<p class="sub-header">Upload a startup pitch deck and generate actionable insights with comprehensive visualizations</p>', unsafe_allow_html=True)
 
 
-# Initialize AIStartupUtility
-utility = AIStartupUtility()
-
-
-
-
-
+# Initialize ADK Root Agent
+analyzer_agent = StartupAnalyzerAgent()
 
 # Custom CSS for enhanced UI/UX
 st.markdown("""
 <style>
-    /* Global styles */
-
     /* Animated button */
     .questionnaire-button {
         display: inline-block;
@@ -221,6 +265,7 @@ st.markdown("""
         width: 300px;
         height: 300px;
     }
+    }
     /* Tooltip */
     .questionnaire-button[data-tooltip]:hover:after {
         content: attr(data-tooltip);
@@ -242,11 +287,7 @@ st.markdown("""
 
 
 
-    /* Icon styles */
-    .icon {
-        color: #3B82F6;
-        font-size: 20px;
-    }
+
     /* Responsive columns */
     .stColumn > div {
         padding: 10px;
@@ -263,7 +304,6 @@ st.markdown("""
             font-size: 12px;
             color: white;
         }
-
     }
 </style>
 """, unsafe_allow_html=True)
@@ -286,6 +326,59 @@ with col1:
     pitch_deck = st.file_uploader("Upload Mandatory Startup Pitch Deck (PDF Recommended)", type=["pdf", "docx", "doc", "txt"], help="Upload a PDF file (max 200MB)")
 with col2:
     additional_files = st.file_uploader("Upload Optional Documents (e.g., call transcript, founder copy, email document)", type=["pdf", "docx", "doc", "txt"], accept_multiple_files=True, help="Upload multiple files if needed")
+
+# Persist uploaded files to /tmp to survive reruns/cloud instance nuances
+if pitch_deck is not None:
+    # Use a deterministic filename to avoid recreating on every rerun
+    safe_name = pitch_deck.name.replace('/', '_').replace('\\', '_')
+    tmp_path = os.path.join(tempfile.gettempdir(), f"pitch_{safe_name}")
+    
+    # Only write if file doesn't exist or is different
+    should_write = True
+    if os.path.exists(tmp_path):
+        # Check if it's the same file by comparing size
+        existing_size = os.path.getsize(tmp_path)
+        new_size = len(pitch_deck.getbuffer())
+        should_write = (existing_size != new_size)
+    
+    if should_write:
+        with open(tmp_path, 'wb') as out:
+            out.write(pitch_deck.getbuffer())
+    
+    mime = getattr(pitch_deck, 'type', None) or mimetypes.guess_type(tmp_path)[0] or 'application/octet-stream'
+    st.session_state['saved_pitch'] = {'path': tmp_path, 'name': pitch_deck.name, 'type': mime}
+    st.success(f"✅ Pitch deck '{pitch_deck.name}' ready for analysis")
+
+if additional_files:
+    saved_list = []
+    for f in additional_files:
+        # Use deterministic filename
+        safe_name = f.name.replace('/', '_').replace('\\', '_')
+        tmp_path = os.path.join(tempfile.gettempdir(), f"add_{safe_name}")
+        
+        # Only write if file doesn't exist or is different
+        should_write = True
+        if os.path.exists(tmp_path):
+            existing_size = os.path.getsize(tmp_path)
+            new_size = len(f.getbuffer())
+            should_write = (existing_size != new_size)
+        
+        if should_write:
+            with open(tmp_path, 'wb') as out:
+                out.write(f.getbuffer())
+        
+        mime = getattr(f, 'type', None) or mimetypes.guess_type(tmp_path)[0] or 'application/octet-stream'
+        saved_list.append({'path': tmp_path, 'name': f.name, 'type': mime})
+    st.session_state['saved_additional'] = saved_list
+    st.success(f"✅ {len(additional_files)} additional file(s) ready")
+
+# Show saved files status if uploader is empty but files are in session
+if pitch_deck is None and 'saved_pitch' in st.session_state:
+    saved = st.session_state['saved_pitch']
+    if os.path.exists(saved['path']):
+        st.info(f"📁 Using previously uploaded: {saved['name']}")
+    else:
+        st.warning(f"⚠️ Previously uploaded file no longer accessible. Please re-upload.")
 
 
 
@@ -351,7 +444,7 @@ with button_container:
         analyze_clicked = st.button(" Start Analyzing", type="primary", use_container_width=True)
         
         # Add helpful hint below button
-        if pitch_deck:
+        if pitch_deck or ('saved_pitch' in st.session_state):
             st.markdown("""
             <div style='
                 text-align: center; 
@@ -376,49 +469,74 @@ with button_container:
             </div>
             """, unsafe_allow_html=True)
     
-    if analyze_clicked and pitch_deck:
-        # Save pitch deck temporarily
-        temp_pitch_path = "temp_pitch.pdf"
-        with open(temp_pitch_path, "wb") as f:
-            f.write(pitch_deck.getbuffer())
-        
-        # Process pitch deck
-        with st.spinner("Processing Pitch Deck PDF..."):
-            pitch_result = utility.extract_text_from_pdf(temp_pitch_path)
-        
-        # Initialize all_content dict with pitch deck
-        all_content = {pitch_deck.name: pitch_result}
-        
-        # Process additional files if any
-        for add_file in additional_files or []:
-            temp_add_path = f"temp_{add_file.name}"
-            with open(temp_add_path, "wb") as f:
-                f.write(add_file.getbuffer())
-            
-            if add_file.type == "application/pdf":
-                all_content[add_file.name] = utility.extract_text_from_pdf(temp_add_path)
-            elif add_file.type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-                all_content[add_file.name] = utility.extract_text_from_docx(temp_add_path)
-            elif add_file.type == "text/plain":
-                all_content[add_file.name] = utility.extract_text_from_txt(temp_add_path)
-            else:
-                st.warning(f"Unsupported file type for {add_file.name}. Skipping.")
-            
-            if os.path.exists(temp_add_path):
-                os.remove(temp_add_path)
-        
+    # Initialize session state for analysis results
+    if 'analysis_complete' not in st.session_state:
+        st.session_state.analysis_complete = False
+    
+    if analyze_clicked and (pitch_deck or 'saved_pitch' in st.session_state):
+        # Process documents using ADK DataProcessingAgent
+        with st.spinner("🤖 Processing documents with AI agents..."):
+            # Use async function with event loop
+            # Use run_async helper for proper event loop handling
+            try:
+                # Prefer live uploader objects; fallback to saved paths
+                pitch_input = pitch_deck if pitch_deck is not None else st.session_state.get('saved_pitch')
+                add_input = additional_files if additional_files else st.session_state.get('saved_additional')
+                
+                # Debug logging
+                print(f"DEBUG: pitch_deck is None: {pitch_deck is None}")
+                print(f"DEBUG: pitch_input type: {type(pitch_input)}")
+                if isinstance(pitch_input, dict):
+                    print(f"DEBUG: pitch_input path exists: {os.path.exists(pitch_input.get('path', ''))}")
+                    print(f"DEBUG: pitch_input path: {pitch_input.get('path', 'NO PATH')}")
+                
+                result = run_async(
+                    analyzer_agent.process_startup_documents(pitch_input, add_input)
+                )
+                
+                if 'error' in result:
+                    st.error(f"Analysis failed: {result['error']}")
+                    # Show error details if available
+                    if 'error_details' in result:
+                        with st.expander("Show error details"):
+                            st.code(result['error_details'])
+                else:
+                    # Mirror agent's session updates on the main thread (thread-safe)
+                    try:
+                        analyzer_agent.update_session_data('all_content', result.get('all_content'))
+                        analyzer_agent.update_session_data('company_json', result.get('company_json'))
+                        analyzer_agent.update_session_data('evaluation_data', result.get('evaluation_data'))
+                        analyzer_agent.update_session_data('analysis_complete', True)
+                    except Exception as sess_e:
+                        print(f"WARNING: Failed to update session on main thread: {sess_e}")
+                    st.success("✅ Document processing completed successfully!")
+                    
+            except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                st.error(f"Agent processing error: {str(e)}")
+                with st.expander("Show full error trace"):
+                    st.code(error_trace)
+
+    # Check analysis status using agent
+    analysis_status = analyzer_agent.get_analysis_status()
+    
+    # Show tabs if analysis has been completed at least once
+    if analysis_status['analysis_complete'] and analysis_status['has_company_data']:
         # Tabbed Interface
         tab1, tab2, tab3, tab4 = st.tabs(["Company Details", "Evaluation Scores", "Final Scores", "Insights"])
+        
+        # Get data from agent session
+        session_data = analysis_status['session_data']
+        all_content = session_data['all_content']
     
+        # Get company analysis from agent session
+        company_json = session_data.get('company_json', {})
+        
         # Tab 1: Company Details
         with tab1:
-            if all_content:
-                with st.spinner("Analyzing company details..."):
-                    company_document_str = str(all_content)
-                    company_json = utility.get_company_json_from_gemini(company_document_str)
-                
-                st.subheader("📋 Company Details")
-                if "error" not in company_json:
+            st.subheader("📋 Company Details")
+            if company_json and "error" not in company_json:
                     # Format company details as a table for better readability
                     company_data = {
                         "Field": ["Company Name", "Sector", "Founded", "Team", "Market", "Traction", "Revenue", "Unique Selling Point", "Competition", "Risks"],
@@ -437,93 +555,217 @@ with button_container:
                     }
                     company_df = pd.DataFrame(company_data)
                     st.dataframe(company_df, use_container_width=True, hide_index=True)
-                else:
-                    st.error("Failed to extract company details.")
+            else:
+                st.error("Failed to extract company details.")
     
+        # Get evaluation data from agent session
+        evaluation_data = session_data.get('evaluation_data', {})
+        
         # Tab 2: Evaluation Scores
         with tab2:
-            if "error" not in company_json:
-                with st.spinner("Evaluating startup..."):
-                    evaluation_data = utility.startup_evaluation(company_json)
+            if evaluation_data and "error" not in evaluation_data:
+                st.subheader("Evaluation Scores")
+                # Convert evaluation data to DataFrame
+                eval_list = evaluation_data.get("startup_score", [])
+                eval_df = pd.DataFrame([
+                    {
+                        "Parameter": item["Parameter"],
+                        "Score": item["Score"],
+                        "Threshold": item["Threshold"],
+                        "Benchmark Normalized": item["Benchmark_normalized"]
+                    } for item in eval_list
+                ])
                 
-                if evaluation_data and "error" not in evaluation_data:
-                    st.subheader("Evaluation Scores")
-                    # Convert evaluation data to DataFrame
-                    eval_list = evaluation_data.get("startup_score", [])
-                    eval_df = pd.DataFrame([
-                        {
-                            "Parameter": item["Parameter"],
-                            "Score": item["Score"],
-                            "Threshold": item["Threshold"],
-                            "Benchmark Normalized": item["Benchmark_normalized"]
-                        } for item in eval_list
-                    ])
-                    
-                    # Display table
-                    st.dataframe(eval_df, use_container_width=True, hide_index=True)
-                    
-                    # Bar Chart for Scores vs Threshold vs Benchmark
-                    fig_bar = px.bar(
-                        eval_df,
-                        x="Parameter",
-                        y=["Score", "Threshold", "Benchmark Normalized"],
-                        barmode="group",
-                        title="Evaluation Scores Comparison",
-                        labels={"value": "Score", "variable": "Metric"},
-                        height=400
-                    )
-                    fig_bar.update_layout(xaxis_title="Parameters", yaxis_title="Scores", legend_title="Metrics")
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                    
-                    # Radar Chart for Scores
-                    fig_radar = go.Figure()
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=eval_df["Score"],
-                        theta=eval_df["Parameter"],
-                        fill="toself",
-                        name="Score"
-                    ))
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=eval_df["Benchmark Normalized"],
-                        theta=eval_df["Parameter"],
-                        fill="toself",
-                        name="Benchmark Normalized"
-                    ))
-                    fig_radar.update_layout(
-                        polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
-                        showlegend=True,
-                        title="Evaluation Scores Radar Chart",
-                        height=400
-                    )
-                    st.plotly_chart(fig_radar, use_container_width=True)
-                    
-                    # Additional Chart: Line Chart for Cumulative Scores
-                    eval_df['Cumulative Score'] = eval_df['Score'].cumsum()
-                    eval_df['Cumulative Benchmark'] = eval_df['Benchmark Normalized'].cumsum()
-                    fig_line = px.line(
-                        eval_df,
-                        x="Parameter",
-                        y=["Cumulative Score", "Cumulative Benchmark"],
-                        title="Cumulative Scores Comparison",
-                        height=400
-                    )
-                    st.plotly_chart(fig_line, use_container_width=True)
-                else:
-                    st.error("Failed to evaluate startup due to invalid evaluation data.")
+                # Display table
+                st.dataframe(eval_df, use_container_width=True, hide_index=True)
+                
+                # Bar Chart for Scores vs Threshold vs Benchmark
+                fig_bar = px.bar(
+                    eval_df,
+                    x="Parameter",
+                    y=["Score", "Threshold", "Benchmark Normalized"],
+                    barmode="group",
+                    title="Evaluation Scores Comparison",
+                    labels={"value": "Score", "variable": "Metric"},
+                    height=400
+                )
+                fig_bar.update_layout(xaxis_title="Parameters", yaxis_title="Scores", legend_title="Metrics")
+                st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # Radar Chart for Scores
+                fig_radar = go.Figure()
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=eval_df["Score"],
+                    theta=eval_df["Parameter"],
+                    fill="toself",
+                    name="Score"
+                ))
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=eval_df["Benchmark Normalized"],
+                    theta=eval_df["Parameter"],
+                    fill="toself",
+                    name="Benchmark Normalized"
+                ))
+                fig_radar.update_layout(
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
+                    showlegend=True,
+                    title="Evaluation Scores Radar Chart",
+                    height=400
+                )
+                st.plotly_chart(fig_radar, use_container_width=True)
+                
+                # Additional Chart: Line Chart for Cumulative Scores
+                eval_df['Cumulative Score'] = eval_df['Score'].cumsum()
+                eval_df['Cumulative Benchmark'] = eval_df['Benchmark Normalized'].cumsum()
+                fig_line = px.line(
+                    eval_df,
+                    x="Parameter",
+                    y=["Cumulative Score", "Cumulative Benchmark"],
+                    title="Cumulative Scores Comparison",
+                    height=400
+                )
+                st.plotly_chart(fig_line, use_container_width=True)
+            else:
+                st.error("Failed to evaluate startup due to invalid evaluation data.")
     
+        # Get or calculate final scores using CalculationAgent
+        final_scores = session_data.get('final_scores', [])
+        if not final_scores and evaluation_data and "error" not in evaluation_data:
+            with st.spinner("🤖 Calculating weighted scores with AI agent..."):
+                try:
+                    score_result = run_async(
+                        analyzer_agent.calculate_scores(evaluation_data)
+                    )
+                    if 'error' not in score_result:
+                        final_scores = score_result['final_scores']
+                        # Mirror agent's session updates on the main thread
+                        try:
+                            analyzer_agent.update_session_data('final_scores', score_result.get('final_scores'))
+                            sess_data = analyzer_agent.get_analysis_status().get('session_data', {})
+                            if sess_data.get('results_df') is None:
+                                analyzer_agent.update_session_data('results_df', score_result.get('final_scores_df'))
+                                analyzer_agent.update_session_data('original_final_scores', score_result.get('final_scores_df'))
+                        except Exception as sess_e:
+                            print(f"WARNING: Failed to update score session on main thread: {sess_e}")
+                except Exception as e:
+                    st.error(f"Score calculation error: {str(e)}")
+        
         # Tab 3: Final Weighted Scores
         with tab3:
-            if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
-                with st.spinner("Calculating weighted scores..."):
-                    final_scores = utility.calculate_final_score_updated(evaluation_data)
-                
-                    st.subheader("🏅 Final Weighted Scores")
+            if final_scores:
+                st.subheader("🏅 Final Weighted Scores")
                 final_scores_df = pd.DataFrame(final_scores)
-                st.dataframe(final_scores_df, use_container_width=True, hide_index=True)
+                
+                # Add info message about editable columns
+                st.info("💡 You can edit the **Threshold** and **Weightage** columns below. Charts will update only after you click **Recalculate**.")
+                
+                # Initialize original scores tracking if not exists
+                if session_data.get('original_final_scores') is None:
+                    analyzer_agent.update_session_data('original_final_scores', final_scores_df.copy())
+                
+                # Create editable data editor with specific column configuration
+                st.caption("You can edit multiple cells below. No processing will occur until you click 'Recalculate'.")
+                column_config = {}
+                
+                # Configure each column - make Threshold and Weightage editable
+                for col in final_scores_df.columns:
+                    if col.lower() in ['threshold', 'weightage']:
+                        if col.lower() == 'threshold':
+                            column_config[col] = st.column_config.NumberColumn(
+                                label="Threshold",
+                                help="Minimum acceptable score (0-10)",
+                                min_value=0.0,
+                                max_value=10.0,
+                                step=0.1,
+                                format="%.1f"
+                            )
+                        elif col.lower() == 'weightage':
+                            column_config[col] = st.column_config.NumberColumn(
+                                label="Weightage", 
+                                help="Relative importance (0-1)",
+                                min_value=0.0,
+                                max_value=1.0,
+                                step=0.01,
+                                format="%.2f"
+                            )
+                    else:
+                        # Make all other columns read-only
+                        column_config[col] = st.column_config.Column(
+                            label=col,
+                            disabled=True
+                        )
+                
+                # Get current results from agent session
+                # Only set results_df in session if it doesn't exist (first load)
+                current_results_df = session_data.get('results_df')
+                if current_results_df is None:
+                    current_results_df = final_scores_df.copy()
+                    # Do NOT update session here; only after recalculation
+                
+                # Display editable data editor
+                edited_df = st.data_editor(
+                    current_results_df,
+                    column_config=column_config,
+                    use_container_width=True,
+                    hide_index=True,
+                    key="final_scores_editor",
+                    num_rows="fixed"
+                )
+
+                # Show validation for edited data (but don't calculate weighted scores yet)
+                if 'Weightage' in edited_df.columns:
+                    weightage_sum = edited_df['Weightage'].sum()
+                    if abs(weightage_sum - 1.0) > 0.01:
+                        st.warning(f"⚠️ Weightage values sum to {weightage_sum:.3f}. For optimal results, they should sum to 1.0")
+                    else:
+                        st.success(f"✅ Weightage values sum to {weightage_sum:.3f} - Good!")
+
+                # Check if user has made changes
+                has_changes = not edited_df.equals(current_results_df)
+                if has_changes:
+                    st.info("📝 You have unsaved changes. Click 'Recalculate' to apply them.")
+
+                # Action button - centered
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col2:
+                    recalculate_clicked = st.button("🔄 Recalculate", type="primary", use_container_width=True, key="save_scores", disabled=not has_changes)
+
+                # Only run recalculation and update session if button was explicitly clicked
+                if recalculate_clicked and has_changes:
+                    # Use CalculationAgent to recalculate scores with edited data
+                    with st.spinner("🤖 Recalculating scores with AI agent..."):
+                        try:
+                            recalc_result = run_async(
+                                analyzer_agent.recalculate_scores(edited_df)
+                            )
+                            if 'error' not in recalc_result:
+                                # Mirror agent's session updates on the main thread
+                                try:
+                                    analyzer_agent.update_session_data('results_df', recalc_result.get('updated_df'))
+                                except Exception as sess_e:
+                                    print(f"WARNING: Failed to update recalculated session on main thread: {sess_e}")
+                                st.success("✅ Recalculated successfully!")
+                                st.rerun()  # Refresh to show updated charts
+                            else:
+                                st.error(f"Recalculation failed: {recalc_result['error']}")
+                        except Exception as e:
+                            st.error(f"Agent recalculation error: {str(e)}")
+
+                # Use saved calculated data for charts (only updates after Recalculate)
+                _results_df = session_data.get('results_df')
+                if _results_df is not None:
+                    display_df = _results_df.copy()
+                else:
+                    display_df = final_scores_df.copy()
+                # Show status of displayed data
+                if has_changes:
+                    st.warning("📊 Charts show previously saved data. Click 'Recalculate' to see updated results.")
+                else:
+                    st.success("📊 Charts are up-to-date with your current data.")
                 
                 # Bar Chart for Weighted Score vs Benchmark
                 fig_final = px.bar(
-                    final_scores_df,
+                    display_df,
                     x="Parameter",
                     y=["Weighted_Score", "benchmark_weighted_score"],
                     barmode="group",
@@ -541,7 +783,7 @@ with button_container:
                             y=1.1,
                             xref="paper",
                             yref="paper",
-                            text=f"Total Weighted Score: {final_scores_df['Weighted_Score'].sum():.2f} | Total Benchmark: {final_scores_df['benchmark_weighted_score'].sum():.2f}",
+                            text=f"Total Weighted Score: {display_df['Weighted_Score'].sum():.3f} | Total Benchmark: {display_df['benchmark_weighted_score'].sum():.3f}",
                             showarrow=False,
                             font=dict(size=14)
                         )
@@ -550,14 +792,20 @@ with button_container:
                 st.plotly_chart(fig_final, use_container_width=True)
                 
                 # Gauge Chart for Total Score vs Benchmark
-                total_score = final_scores_df['Weighted_Score'].sum()
-                total_benchmark = final_scores_df['benchmark_weighted_score'].sum()
+                total_score = display_df['Weighted_Score'].sum()
+                total_benchmark = display_df['benchmark_weighted_score'].sum()
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number+delta",
                     value=total_score,
+                    number={'valueformat': '.3f'},  # Format to 3 decimal places
                     domain={'x': [0, 1], 'y': [0, 1]},
                     title={'text': "Total Score (out of 10)"},
-                    delta={'reference': total_benchmark, 'increasing': {'color': "green"}, 'decreasing': {'color': "red"}},
+                    delta={
+                        'reference': total_benchmark, 
+                        'increasing': {'color': "green"}, 
+                        'decreasing': {'color': "red"},
+                        'valueformat': '.3f'  # Format delta to 3 decimal places
+                    },
                     gauge={
                         'axis': {'range': [0, 10]},
                         'bar': {'color': "darkblue"},
@@ -574,39 +822,85 @@ with button_container:
         # Tab 4: Insights and Recommendations
         with tab4:
             if "error" not in company_json and evaluation_data and "error" not in evaluation_data:
-                with st.spinner("Generating insights..."):
+                with st.spinner("🤖 Generating insights with AI agent..."):
                     uploaded_content_str = str(all_content)
-                    insights = utility.derive_insight(uploaded_content_str, company_json, evaluation_data, final_scores, 8.0)
+                    # Use updated scores from session state if available, otherwise use original
+                    current_results_df = session_data.get('results_df')
+                    scores_for_insights = current_results_df.to_dict('records') if current_results_df is not None else final_scores
+                    
+                    # Generate insights using agent - use run_async helper
+                    try:
+                        insights = run_async(
+                            analyzer_agent.generate_insights(
+                                uploaded_content_str, company_json, evaluation_data, 
+                                scores_for_insights, 8.0
+                            )
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Insight generation failed: {str(e)}")
+                        insights = {'error': f'Insight generation failed: {str(e)}'}
                 
-                st.subheader("💡 Insights and Recommendations")
-                
-                # Red Flags
-                st.markdown("### 🚨 Red Flags")
-                for flag in insights.get("red_flags", []):
-                    with st.expander(flag["description"]):
-                        st.markdown(f"**Reference**: {flag['reference']}")
-                
-                # Green Flags
-                st.markdown("### ✅ Green Flags")
-                for flag in insights.get("green_flags", []):
-                    with st.expander(flag["description"]):
-                        st.markdown(f"**Reference**: {flag['reference']}")
-                
-                # Recommendations
-                st.markdown("### 📝 Recommendations")
-                for i, rec in enumerate(insights.get("recommendations", [])):
-                    st.markdown(f"{i+1}. {rec}")
+                # Only show insights if generation was successful
+                if 'error' not in insights:
+                    st.subheader("💡 Insights and Recommendations")
+                    
+                    # Red Flags
+                    st.markdown("### 🚨 Red Flags")
+                    red_flags = insights.get("red_flags", [])
+                    if red_flags:
+                        for flag in red_flags:
+                            with st.expander(flag.get("description", "N/A")):
+                                st.markdown(f"**Reference**: {flag.get('reference', 'N/A')}")
+                    else:
+                        st.info("No red flags identified.")
+                    
+                    # Green Flags
+                    st.markdown("### ✅ Green Flags")
+                    green_flags = insights.get("green_flags", [])
+                    if green_flags:
+                        for flag in green_flags:
+                            with st.expander(flag.get("description", "N/A")):
+                                st.markdown(f"**Reference**: {flag.get('reference', 'N/A')}")
+                    else:
+                        st.info("No green flags identified.")
+                    
+                    # Recommendations
+                    st.markdown("### 📝 Recommendations")
+                    recommendations = insights.get("recommendations", [])
+                    if recommendations:
+                        for i, rec in enumerate(recommendations):
+                            st.markdown(f"{i+1}. {rec}")
+                    else:
+                        st.info("No recommendations available.")
+                else:
+                    st.error(f"Failed to generate insights: {insights.get('error', 'Unknown error')}")
+            else:
+                # Show why insights can't be generated
+                if "error" in company_json:
+                    st.error(f"❌ Cannot generate insights due to company analysis error: {company_json.get('error')}")
+                elif not evaluation_data:
+                    st.error("❌ Cannot generate insights: Evaluation data is missing")
+                elif "error" in evaluation_data:
+                    st.error(f"❌ Cannot generate insights due to evaluation error: {evaluation_data.get('error')}")
+                else:
+                    st.warning("⚠️ Insights cannot be generated at this time.")
     
-        # Clean up temporary file
-        if os.path.exists(temp_pitch_path):
-            os.remove(temp_pitch_path)
-    else:
-        if not pitch_deck:
-            # st.info("Please upload a PDF pitch deck to begin the analysis.")
-            pass
+    # Show message when no analysis has been done yet
+    elif not analysis_status['analysis_complete']:
+        st.info("👆 Please upload a pitch deck and click 'Start Analyzing' to begin the analysis.")
+
+# Add a button to start new analysis (clear session state)
+if analysis_status['analysis_complete']:
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("🆕 Start New Analysis", type="secondary", use_container_width=True):
+            # Use agent to reset analysis
+            analyzer_agent.reset_analysis()
+            st.success("✅ Ready for new analysis! Upload a new pitch deck above.")
+            st.rerun()
 
 st.markdown("---")
-# st.markdown("Developed by GenAi_Crew | Powered by Gemini ")
 
 st.markdown("""
 <style>
@@ -619,20 +913,11 @@ st.markdown("""
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-.cool-footer span.developers {
     font-weight: bold;
     font-size: 18px;
 }
-.cool-footer span.separator {
-    color: #ffd700;
-    margin: 0 10px;
-}
-.cool-footer span.powered {
-    font-style: italic;
-}
 </style>
 <div class="cool-footer">
-    <span class="developers">Developed by GenAI Crew for Gen AI Exchange Hackathon</span>
+    Developed by GenAI Crew for Gen AI Exchange Hackathon
 </div>
 """, unsafe_allow_html=True)

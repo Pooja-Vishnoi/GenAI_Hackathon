@@ -11,11 +11,9 @@ import pdfplumber
 from PyPDF2 import PdfReader
 from google import genai
 from dotenv import load_dotenv
-from agents.attribute_extraction_prompt import ATTRIBUTE_EXTRACTION_PROMPT
-from agents.startup_scoring_prompt import STARTUP_SCORING_PROMPT
-from agents.insight_prompt import INSIGHT_PROMPT
 import json
 from docx import Document
+from Utils.public_data_source import public_data_source
 
 load_dotenv(dotenv_path="agents/.env")
 
@@ -23,10 +21,23 @@ load_dotenv(dotenv_path="agents/.env")
 key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Load prompts from text files
+def load_prompt(filename):
+    """Load prompt from text file"""
+    prompt_path = os.path.join('prompts', filename)
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+ATTRIBUTE_EXTRACTION_PROMPT = load_prompt('attribute_extraction.txt')
+STARTUP_SCORING_PROMPT = load_prompt('startup_scoring.txt')
+INSIGHT_PROMPT = load_prompt('insight.txt')
+
 class AIStartupUtility:
 
-    def __init__(self):
-        pass
+    def __init__(self, model_name: str, weightages: dict = None):
+        self.model_name = model_name
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        self.weightages = weightages if weightages is not None else {}
 
 
     def extract_text_from_pdf(self, pdf_path):
@@ -272,7 +283,7 @@ class AIStartupUtility:
             print(f"Error extracting text from TXT: {str(e)}")
             return "Not available"
         
-    def get_company_json_from_gemini(self, company_document=""):
+    async def get_company_json_from_gemini(self, company_document=""):
 
         """Uses gemini api to get important startup details in json format
         Input: [{"page_no": 1, "extracted_text": "text from page 1", "extracted_text_from_image": "image text from page 1", "extracted_tabular_data": "table data from page 1"}, {...}]
@@ -281,11 +292,25 @@ class AIStartupUtility:
         try:
 
             prompt=f"{ATTRIBUTE_EXTRACTION_PROMPT} \n\nHere is the extracted content from the startup's document: {company_document} provide the JSON output as specified."
-            # Call Gemini API for analysis
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            
+            # Call Gemini API for analysis with proper error handling
+            try:
+                # Create a fresh client bound to the current event loop/thread
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "cannot schedule new futures after interpreter shutdown" in error_msg or "Event loop is closed" in error_msg:
+                    logger.error(f"Event loop issue detected: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again.",
+                        "company_name": "Unknown",
+                        "sector": "Unknown"
+                    }
+                raise
         
             response_text = response.text.strip()
         
@@ -317,10 +342,17 @@ class AIStartupUtility:
                 "sector": "Unknown",
                 "raw_response": response_text[:200] if 'response_text' in locals() else "No response"
             }
+        except Exception as e:
+            print(f"Unexpected error in get_company_json_from_gemini: {str(e)}")
+            return {
+                "error": f"API error: {str(e)}",
+                "company_name": "Unknown",
+                "sector": "Unknown"
+            }
 
 
             
-    def startup_evaluation(self, startup_important_details_json):
+    async def startup_evaluation(self, startup_important_details_json):
         
         """Uses gemini api to evaluate startup based on json input based on 10 parameters
         Input: company_important_details_json {"company_name": "name of startup", "sector": "sector of startup", "founded": "2022", "team": "3 founders from IIT Delhi + 10 engineers","market": "Indian SME lending market $50B", "traction": "10,000 users, 20% MoM growth","revenue": "INR 2 Cr ARR", "unique_selling_point": "AI-driven underwriting with 30% lower default rate", "competition": "KreditBee, LendingKart", "risks": "Regulatory hurdles, funding dependency"}
@@ -329,12 +361,23 @@ class AIStartupUtility:
         try:
 
             prompt=f"{STARTUP_SCORING_PROMPT} \n\nHere is the important details about the startup:\n\n{str(startup_important_details_json)}"
-            # Call Gemini API for analysis
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            
+            # Call Gemini API for analysis with proper error handling
+            try:
+                # Create a fresh client bound to the current event loop/thread
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "cannot schedule new futures after interpreter shutdown" in error_msg or "Event loop is closed" in error_msg:
+                    logger.error(f"Event loop issue during evaluation: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again."
+                    }
+                raise
         
             response_text = response.text.strip()
         
@@ -364,16 +407,7 @@ class AIStartupUtility:
 
     def calculate_final_score_updated(self, evaluation_data) -> dict:
         # Define weightages for each parameter
-        weightages = {
-            "Team_Quality": 0.15,
-            "Market_Size": 0.15,
-            "Traction": 0.15,
-            "Financials": 0.10,
-            "Product_Uniqueness": 0.15,
-            "Competitive_Landscape": 0.10,
-            "Business_Model_Clarity": 0.10,
-            "Risk_Factors": 0.10
-        }
+        weightages = self.weightages
         
         # Check if evaluation_data is a dict with 'startup_score' key
         if isinstance(evaluation_data, dict) and "startup_score" in evaluation_data:
@@ -406,24 +440,46 @@ class AIStartupUtility:
         # Return the final JSON structure
         return result
 
-    def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
+    async def derive_insight(self, uploaded_files_content, startup_extracted_data, startup_score_normalized, final_score, final_benchmark_score):
         
         """Uses gemini api to identify red and green flags and recommendations
         Input: 
         Output: 
         """
         try:
+            print(f"Generating insights with model: {self.model_name}")
+            print(f"Uploaded content length: {len(str(uploaded_files_content))}")
+            print(f"Company data: {type(startup_extracted_data)}")
+            print(f"Evaluation data: {type(startup_score_normalized)}")
+            print(f"Final scores: {type(final_score)}")
+            print(f"Benchmark score: {final_benchmark_score}")
 
             prompt=f"{INSIGHT_PROMPT} \n\nHere is the important details about the startup: The text provided from pitch deck and other documents \n\n{str(uploaded_files_content)}  \n\n The important extracted attributes of company from files {str(startup_extracted_data)} \n\the evaluation scores about the startup:\n\n{str(startup_score_normalized)}\n\nHere is the overall score about the startup:\n\n{str(final_score)} against the benchmark score considering top players in similar category which is final benchmark score: {str(final_benchmark_score)} "
-            # Call Gemini API for analysis
-            response = client.models.generate_content(
-                model="gemini-2.5-flash", 
-                contents=prompt
-            )
+            
+            print(f"Prompt length: {len(prompt)} characters")
+            
+            # Call Gemini API for analysis with loop-safe client
+            try:
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "Event loop is closed" in error_msg or "cannot schedule new futures" in error_msg:
+                    logger.error(f"Event loop issue during insight generation: {error_msg}")
+                    return {
+                        "error": "System is processing. Please try again in a moment.",
+                        "red_flags": [],
+                        "green_flags": [],
+                        "recommendations": []
+                    }
+                raise
         
             response_text = response.text.strip()
         
-            print("Gemini response:", response_text)
+            print("Gemini response:", response_text[:500] if len(response_text) > 500 else response_text)
 
             # Extract and parse JSON from response
             if response_text.startswith('{') and response_text.endswith('}'):
@@ -436,14 +492,69 @@ class AIStartupUtility:
                     json_str = response_text[start:end]
                     generated_insight = json.loads(json_str)
                 else:
+                    print(f"Could not find JSON in response: {response_text}")
                     generated_insight = {
                         "error": "Could not extract valid JSON",
+                        "raw_response": response_text
                     }
+            
+            print(f"Generated insight keys: {generated_insight.keys()}")
             return generated_insight
 
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {str(e)}")
-            return {}
+            return {"error": f"JSON parsing error: {str(e)}"}
+        except Exception as e:
+            print(f"Error in derive_insight: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {"error": f"Insight generation error: {str(e)}"}
+
+    async def enrich_company_data(self, startup_name, sector):
+        """
+        Enriches company data by fetching information from public sources and using Gemini to extract structured data.
+        """
+        try:
+            # Step 1: Fetch raw data from public sources
+            public_data = public_data_source(startup_name, sector)
+            
+            # Step 2: Create a prompt for Gemini to process the raw data
+            prompt = f"Extract and structure the following company data for '{startup_name}' in the '{sector}' sector. Focus on details about funding, key personnel, recent news, and product offerings. Present the output as a single JSON object. Here is the raw data from various sources: \n\nCrunchbase: {public_data.get('crunchbase', 'N/A')}\nAngelList: {public_data.get('angellist', 'N/A')}\nLinkedIn: {public_data.get('linkedin', 'N/A')}\nNews: {public_data.get('news', 'N/A')}"
+
+            # Step 3: Call Gemini API for analysis with loop-safe client
+            try:
+                local_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                response = await local_client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+            except (RuntimeError, Exception) as api_error:
+                error_msg = str(api_error)
+                if "Event loop is closed" in error_msg or "cannot schedule new futures" in error_msg:
+                    logger.error(f"Event loop issue during enrichment: {error_msg}")
+                    return {"error": "System is processing. Please try again in a moment."}
+                raise
+            response_text = response.text.strip()
+            
+            print("Gemini enrichment response:", response_text)
+
+            # Step 4: Extract and parse JSON from response
+            if response_text.startswith('{') and response_text.endswith('}'):
+                enriched_data = json.loads(response_text)
+            else:
+                start = response_text.find('{')
+                end = response_text.rfind('}') + 1
+                if start != -1 and end != 0:
+                    json_str = response_text[start:end]
+                    enriched_data = json.loads(json_str)
+                else:
+                    enriched_data = {"error": "Could not extract valid JSON from enrichment response."}
+            
+            return enriched_data
+
+        except Exception as e:
+            print(f"Error during data enrichment: {str(e)}")
+            return {"error": f"An error occurred during data enrichment: {str(e)}"}
 
     def report_generation(self, startup_data, score_data, overall_score_data, insights_data):
         pass

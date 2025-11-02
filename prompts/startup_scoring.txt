@@ -1,4 +1,4 @@
-STARTUP_SCORING_PROMPT = """
+
 Please evaluate the startup based on the following 8 parameters, assigning each an integer score from 1 to 10. Use publicly available data and industry context to inform your evaluation. Return a valid JSON object with the specified structure.
 
 **Evaluation Criteria**:
@@ -104,4 +104,3 @@ Return a valid JSON object structured as follows:
   ]
 }
 
-"""

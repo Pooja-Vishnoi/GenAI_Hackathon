@@ -1,4 +1,3 @@
-INSIGHT_PROMPT="""
 
 You are an AI startup analyst tasked with evaluating a startup based on the following provided information:
 
@@ -41,4 +40,3 @@ Output your response strictly in the following JSON format, with no additional t
   ]
 }
 
-"""
